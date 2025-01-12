@@ -1,0 +1,21 @@
+<div class="card mx-auto mt-5" style="max-width: 600px;">
+  <div class="card-header bg-primary text-white text-center">
+    <h3>Fee Receipt</h3>
+  </div>
+  <div class="card-body">
+    <h5 class="card-title">Student Details</h5>
+    <p><strong>Name:</strong> {{receipt.name}}</p>
+    <p><strong>Roll Number:</strong> {{receipt.roll_number}}</p>
+    <p><strong>Class:</strong> {{receipt.class}}</p>
+    <p><strong>Parent Contact:</strong> {{receipt.parent_contact}}</p>
+    <hr>
+    <h5 class="card-title">Fee Details</h5>
+    <p><strong>Fee Amount:</strong> {{receipt.fee_amount}}</p>
+    <p><strong>Fee Status:</strong> {{receipt.fees_status}}</p>
+    <p><strong>Last Updated:</strong> {{formatDateTime receipt.updated_date}}</p>
+  </div>
+  <div class="card-footer text-center">
+    <p>Thank you!</p>
+    <a href="/fees/receipt/download/{{receipt.student_id}}" class="btn btn-success">Download PDF</a>
+  </div>
+</div>

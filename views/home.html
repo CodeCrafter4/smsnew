@@ -1,0 +1,73 @@
+<table class="table table-bordered">
+  <thead class="thead-dark">
+    <tr>
+      <!-- <th scope="col">ID</th> -->
+      <th scope="col">NAME</th>
+      <th scope="col">ROLL NUMBER</th>
+      <th scope="col">CLASS</th>
+      <th scope="col">PARENT CONTACT</th>
+      <th scope="col">FEE AMOUNT</th>
+      
+      <th scope="col" class="text-center">ACTION</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each rows}}
+    <tr>
+      <!-- <th scope="row">{{this.student_id}}</th> -->
+      <td>{{this.name}}</td>
+      <td>{{this.roll_number}}</td>
+      <td>{{this.class}}</td>
+      <td>{{this.parent_contact}}</td>
+      <td>{{this.fee_amount}}</td>
+      
+      <td class="text-center">
+        <a href="/edit/{{this.student_id}}" class="btn btn-light btn-small m-1"> 
+          <i class="bi bi-pencil">Edit</i>
+        </a>
+        <a href="/delete/{{this.student_id}}" class="btn btn-light btn-small m-1"> 
+          <i class="bi bi-trash">Delete</i>
+      
+      </td>
+
+      
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+<br>
+<p class="text-uppercase font-weight-bold text-center"><i class="bi bi-calendar-day m-1"></i>Mark Attendance</p>
+
+<form action="/attendance/mark" method="POST" class="mb-4">
+  <input type="hidden" name="attendance_date" value="{{currentDate}}" />
+  <select name="studentId" class="form-select mb-2">
+    {{#each rows}}
+    <option value="{{this.student_id}}">{{this.name}}</option>
+    {{/each}}
+  </select>
+
+  <select name="status" class="form-select mb-2">
+    <option value="present">Present</option>
+    <option value="absent">Absent</option>
+  </select>
+  <br>
+  <div class="text-center">
+    <button type="submit" class="text-center btn btn-primary">Mark Attendance</button>
+
+</div>
+
+</form>
+<br>
+
+<p class="text-uppercase font-weight-bold text-center" ><i class="bi bi-flag m-1"></i>Weekly Report</p>
+<form action="/attendance/weekly" method="get" class="d-flex justify-content-center mb-4">
+  <label for="weekStart" class="me-2">Select Week Start:</label>
+  <input type="date" id="weekStart" name="weekStart" class="form-control me-2" required>
+  <button type="submit" class="btn btn-primary">View Report</button>
+</form>
+
+
+
+<!-- <a href="/add" class="btn btn-primary mt-3">Add New Student</a> -->
+<!-- <a href="/view_all" class="btn btn-primary mt-3 "><i class="bi bi-view-list m-1"></i>View all</a> -->
+
