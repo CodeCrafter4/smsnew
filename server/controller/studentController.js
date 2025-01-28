@@ -707,7 +707,7 @@ exports.signup = (req, res) => {
     return res.status(400).send("All fields are required.");
   }
 
-  // Hash the password
+  // Hash the password here
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   pool.getConnection((err, connection) => {
