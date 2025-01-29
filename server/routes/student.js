@@ -49,22 +49,18 @@ router.get("/attendance/weekly", userController.weeklyReport);
 
 router.get("/add", userController.form);
 router.get("/view_all", userController.viewAllStudents);
-
 router.post("/add", userController.create);
 router.get("/edit/:id", userController.edit);
 router.post("/edit/:id", userController.update);
 router.get("/delete/:id", userController.delete);
-
 router.post("/update/fees/:studentId", userController.updateFeesStatus);
 router.post("/update/attendance/:studentId",userController.updateAttendanceStatus);
+
+
 router.get("", (req, res) => {
   
   res.render("home", { title: "Welcome Home!" });
 });
-
-
-
-
 
 // Protected Route Example
 router.get("/protected", authenticateToken, (req, res) => {

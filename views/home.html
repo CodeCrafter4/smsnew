@@ -1,71 +1,94 @@
-<table class="table table-bordered">
-  <thead class="thead-dark">
-    <tr>
-      <!-- <th scope="col">ID</th> -->
-      <th scope="col">NAME</th>
-      <th scope="col">ROLL NUMBER</th>
-      <th scope="col">CLASS</th>
-      <th scope="col">PARENT CONTACT</th>
-      <th scope="col">FEE AMOUNT</th>
-      
-      <th scope="col" class="text-center">ACTION</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each rows}}
-    <tr>
-      <!-- <th scope="row">{{this.student_id}}</th> -->
-      <td>{{this.name}}</td>
-      <td>{{this.roll_number}}</td>
-      <td>{{this.class}}</td>
-      <td>{{this.parent_contact}}</td>
-      <td>{{this.fee_amount}}</td>
-      
-      <td class="text-center">
-        <a href="/edit/{{this.student_id}}" class="btn btn-light btn-small m-1"> 
-          <i class="bi bi-pencil">Edit</i>
-        </a>
-        <a href="/delete/{{this.student_id}}" class="btn btn-light btn-small m-1"> 
-          <i class="bi bi-trash">Delete</i>
-      
-      </td>
-
-      
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
-<br>
-<p class="text-uppercase font-weight-bold text-center"><i class="bi bi-calendar-day m-1"></i>Mark Attendance</p>
-
-<form action="/attendance/mark" method="POST" class="mb-4">
-  <input type="hidden" name="attendance_date" value="{{currentDate}}" />
-  <select name="studentId" class="form-select mb-2">
-    {{#each rows}}
-    <option value="{{this.student_id}}">{{this.name}}</option>
-    {{/each}}
-  </select>
-
-  <select name="status" class="form-select mb-2">
-    <option value="present">Present</option>
-    <option value="absent">Absent</option>
-  </select>
-  <br>
-  <div class="text-center">
-    <button type="submit" class="text-center btn btn-primary">Mark Attendance</button>
-
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead class="thead-dark">
+      <tr>
+        <th scope="col">NAME</th>
+        <th scope="col">ROLL NUMBER</th>
+        <th scope="col" class="d-none d-md-table-cell">CLASS</th> <!-- Hidden on small screens -->
+        <th scope="col" class="d-none d-lg-table-cell">PARENT CONTACT</th> <!-- Hidden on small & medium screens -->
+        <th scope="col">FEE AMOUNT</th>
+        <th scope="col" class="text-center">ACTION</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each rows}}
+      <tr>
+        <td>{{this.name}}</td>
+        <td>{{this.roll_number}}</td>
+        <td class="d-none d-md-table-cell">{{this.class}}</td> <!-- Hidden on small screens -->
+        <td class="d-none d-lg-table-cell">{{this.parent_contact}}</td> <!-- Hidden on small & medium screens -->
+        <td>{{this.fee_amount}}</td>
+        <td class="text-center">
+          <a href="/edit/{{this.student_id}}" class="btn btn-light btn-small m-1">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+          <a href="/delete/{{this.student_id}}" class="btn btn-light btn-small m-1">
+            <i class="bi bi-trash"></i> Delete
+          </a>
+        </td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
 </div>
 
-</form>
 <br>
+<div class="container">
+  <!-- Mark Attendance Section -->
+  <p class="text-uppercase font-weight-bold text-center">
+    <i class="bi bi-calendar-day m-1"></i> Mark Attendance
+  </p>
 
-<p class="text-uppercase font-weight-bold text-center" ><i class="bi bi-flag m-1"></i>Weekly Report</p>
-<form action="/attendance/weekly" method="get" class="d-flex justify-content-center mb-4">
-  <label for="weekStart" class="me-2">Select Week Start:</label>
-  <input type="date" id="weekStart" name="weekStart" class="form-control me-2" required>
-  <button type="submit" class="btn btn-primary">View Report</button>
-</form>
+  <form action="/attendance/mark" method="POST" class="mb-4">
+    <input type="hidden" name="attendance_date" value="{{currentDate}}" />
+    
+    <div class="row g-2">
+      <!-- Student Selection -->
+      <div class="col-md-6">
+        <select name="studentId" class="form-select">
+          {{#each rows}}
+          <option value="{{this.student_id}}">{{this.name}}</option>
+          {{/each}}
+        </select>
+      </div>
 
+      <!-- Attendance Status Selection -->
+      <div class="col-md-6">
+        <select name="status" class="form-select">
+          <option value="present">Present</option>
+          <option value="absent">Absent</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <button type="submit" class="btn btn-primary w-100 w-md-auto">Mark Attendance</button>
+    </div>
+  </form>
+</div>
+
+<hr>
+
+<!-- Weekly Report Section -->
+<div class="container">
+  <p class="text-uppercase font-weight-bold text-center">
+    <i class="bi bi-flag m-1"></i> Weekly Report
+  </p>
+
+  <form action="/attendance/weekly" method="get" class="mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-6">
+        <label for="weekStart" class="form-label d-block text-center text-md-start">Select Week Start:</label>
+      </div>
+      <div class="col-md-4">
+        <input type="date" id="weekStart" name="weekStart" class="form-control" required>
+      </div>
+      <div class="col-md-2 text-center text-md-start">
+        <button type="submit" class="btn btn-primary w-100 w-md-auto">View Report</button>
+      </div>
+    </div>
+  </form>
+</div>
 
 
 <!-- <a href="/add" class="btn btn-primary mt-3">Add New Student</a> -->

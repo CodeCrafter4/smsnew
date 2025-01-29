@@ -86,29 +86,44 @@ exports.view = (req, res) => {
 
 
 //find user by search
+// Find user by search (fetching from students and fees tables)
 exports.find = (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) throw err;
-    console.log("Connected to the database!  " + connection.threadId);
+    console.log("Connected to the database! " + connection.threadId);
+
     let search = req.body.search;
 
-   connection.query('SELECT * FROM students WHERE name LIKE ?' ,['%'+search +'%'],(err, rows) => {
+    // Query to fetch student data along with fee details
+    const query = `
+      SELECT 
+        students.student_id, 
+        students.name, 
+        students.roll_number, 
+        students.class, 
+        students.parent_contact, 
+        fees.fee_amount, 
+        fees.fees_status, 
+      fees.paid_date
+      FROM students 
+      LEFT JOIN fees ON students.student_id = fees.student_id
+      WHERE students.name LIKE ?;
+    `;
 
-    connection.release();
+    connection.query(query, [`%${search}%`], (err, rows) => {
+      connection.release();
+
       if (!err && rows) {
         res.render("home.html", { rows });
       } else {
-        console.log(error);
+        console.error("Error fetching student and fee data: ", err);
+        res.status(500).send("Error fetching data");
       }
-      console.log(
-        "The data from students table:\n" 
-      );
+
+      console.log("Fetched data from students and fees tables.");
     });
   });
-
-
 };
-
 
 
 // Render edit page
@@ -222,11 +237,6 @@ exports.create = (req, res) => {
     );
   });
 };
-
-
-
-
-
 
 
 exports.viewAllStudents = (req, res) => {
@@ -351,7 +361,7 @@ exports.form = (req, res) => {
 // Mark attendance for a specific date
 exports.markAttendance = (req, res) => {
   const { studentId,  status } = req.body;
-const attendance_date = new Date().toISOString().split("T")[0];
+  const attendance_date = new Date().toISOString().split("T")[0];
 
 
   pool.getConnection((err, connection) => {
