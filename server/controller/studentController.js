@@ -1,5 +1,6 @@
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const mysql = require("mysql");
-
 
 //connection pool
 const pool = mysql.createPool({
@@ -10,7 +11,6 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
 });
 
-
 //view students
 // View all students, fees, and attendance
 exports.view = (req, res) => {
@@ -20,7 +20,7 @@ exports.view = (req, res) => {
       console.error("Database connection failed!", err);
       return;
     }
-    console.log("Connected to the database!" );
+    console.log("Connected to the database!");
 
     // SQL queries
     const studentQuery = "SELECT * FROM students";
@@ -73,17 +73,11 @@ exports.view = (req, res) => {
           res.render("home", { rows: combinedData });
 
           // Log the combined data for debugging
-         
         });
       });
     });
   });
 };
-
-
-
-
-
 
 //find user by search
 // Find user by search (fetching from students and fees tables)
@@ -125,39 +119,19 @@ exports.find = (req, res) => {
   });
 };
 
-
 // Render edit page
 exports.edit = (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) throw err;
     let id = req.params.id;
 
-    connection.query('SELECT * FROM students WHERE student_id = ?', [id], (err, rows) => {
-      connection.release();
-      if (!err && rows.length > 0) {
-        res.render("edit.html", { student: rows[0] });
-      } else {
-        console.log(err);
-      }
-    });
-  });
-};
-
-
-
-// Update student
-exports.update = (req, res) => {
-  const { name, roll_number, class: studentClass, parent_contact } = req.body;
-  const id = req.params.id;
-  pool.getConnection((err, connection) => {
-    if (err) throw err;
     connection.query(
-      'UPDATE students SET name = ?, roll_number = ?, class = ?, parent_contact = ? WHERE student_id = ?',
-      [name, roll_number, studentClass, parent_contact, id],
-      (err) => {
+      "SELECT * FROM students WHERE student_id = ?",
+      [id],
+      (err, rows) => {
         connection.release();
-        if (!err) {
-          res.redirect('/');
+        if (!err && rows.length > 0) {
+          res.render("edit.html", { student: rows[0] });
         } else {
           console.log(err);
         }
@@ -166,7 +140,26 @@ exports.update = (req, res) => {
   });
 };
 
-
+// Update student
+exports.update = (req, res) => {
+  const { name, roll_number, class: studentClass, parent_contact } = req.body;
+  const id = req.params.id;
+  pool.getConnection((err, connection) => {
+    if (err) throw err;
+    connection.query(
+      "UPDATE students SET name = ?, roll_number = ?, class = ?, parent_contact = ? WHERE student_id = ?",
+      [name, roll_number, studentClass, parent_contact, id],
+      (err) => {
+        connection.release();
+        if (!err) {
+          res.redirect("/");
+        } else {
+          console.log(err);
+        }
+      }
+    );
+  });
+};
 
 exports.delete = (req, res) => {
   const id = req.params.id;
@@ -186,9 +179,6 @@ exports.delete = (req, res) => {
     );
   });
 };
-
-
-
 
 // Add new student
 exports.create = (req, res) => {
@@ -213,7 +203,11 @@ exports.create = (req, res) => {
         if (err) {
           console.error(err);
           connection.release();
-          return res.status(500).send("The roll number must be uniq, Error inserting into students table");
+          return res
+            .status(500)
+            .send(
+              "The roll number must be uniq, Error inserting into students table"
+            );
         }
 
         const studentId = results.insertId; // Get the new student ID
@@ -238,7 +232,6 @@ exports.create = (req, res) => {
   });
 };
 
-
 exports.viewAllStudents = (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) {
@@ -247,7 +240,7 @@ exports.viewAllStudents = (req, res) => {
       return;
     }
 
-   const query = `
+    const query = `
   SELECT 
     students.student_id, 
     students.name, 
@@ -266,7 +259,6 @@ exports.viewAllStudents = (req, res) => {
     attendance ON students.student_id = attendance.student_id
 `;
 
-
     connection.query(query, (error, rows) => {
       connection.release();
       if (error) {
@@ -281,7 +273,6 @@ exports.viewAllStudents = (req, res) => {
   });
 };
 
-
 // Update Fees Status
 exports.updateFeesStatus = (req, res) => {
   const studentId = req.params.studentId;
@@ -290,29 +281,36 @@ exports.updateFeesStatus = (req, res) => {
     if (err) throw err;
 
     // Get the current fee status
-    connection.query('SELECT fees_status FROM fees WHERE student_id = ?', [studentId], (err, results) => {
-      if (err) {
-        connection.release();
-        console.log(err);
-        return res.status(500).send("Error fetching fee status");
-      }
-
-      const currentStatus = results[0].fees_status;
-      const newStatus = currentStatus === 'pending' ? 'paid' : 'pending';
-
-      // Update the fee status in the database
-      connection.query('UPDATE fees SET fees_status = ? WHERE student_id = ?', [newStatus, studentId], (err) => {
-        connection.release();
+    connection.query(
+      "SELECT fees_status FROM fees WHERE student_id = ?",
+      [studentId],
+      (err, results) => {
         if (err) {
+          connection.release();
           console.log(err);
-          return res.status(500).send("Error updating fee status");
+          return res.status(500).send("Error fetching fee status");
         }
-        res.redirect('/view_all.html');
-      });
-    });
+
+        const currentStatus = results[0].fees_status;
+        const newStatus = currentStatus === "pending" ? "paid" : "pending";
+
+        // Update the fee status in the database
+        connection.query(
+          "UPDATE fees SET fees_status = ? WHERE student_id = ?",
+          [newStatus, studentId],
+          (err) => {
+            connection.release();
+            if (err) {
+              console.log(err);
+              return res.status(500).send("Error updating fee status");
+            }
+            res.redirect("/view_all.html");
+          }
+        );
+      }
+    );
   });
 };
-
 
 // Update Attendance Status
 exports.updateAttendanceStatus = (req, res) => {
@@ -322,47 +320,47 @@ exports.updateAttendanceStatus = (req, res) => {
     if (err) throw err;
 
     // Get the current attendance status
-    connection.query('SELECT status FROM attendance WHERE student_id = ?', [studentId], (err, results) => {
-      if (err) {
-        connection.release();
-        console.log(err);
-        return res.status(500).send("Error fetching attendance status");
-      }
-
-      const currentStatus = results[0]?.status;
-      const newStatus = currentStatus === 'absent' ? 'present' : 'absent';
-      const currentDate = new Date().toLocaleDateString("en-CA");
-
-
-      // Update the attendance status and attendance_date
-      connection.query(
-        'UPDATE attendance SET status = ?, attendance_date = ? WHERE student_id = ?',
-        [newStatus, currentDate, studentId],
-        (err) => {
+    connection.query(
+      "SELECT status FROM attendance WHERE student_id = ?",
+      [studentId],
+      (err, results) => {
+        if (err) {
           connection.release();
-          if (err) {
-            console.log(err);
-            return res.status(500).send("Error updating attendance status");
-          }
-          res.redirect('/view_all');
+          console.log(err);
+          return res.status(500).send("Error fetching attendance status");
         }
-      );
-    });
+
+        const currentStatus = results[0]?.status;
+        const newStatus = currentStatus === "absent" ? "present" : "absent";
+        const currentDate = new Date().toLocaleDateString("en-CA");
+
+        // Update the attendance status and attendance_date
+        connection.query(
+          "UPDATE attendance SET status = ?, attendance_date = ? WHERE student_id = ?",
+          [newStatus, currentDate, studentId],
+          (err) => {
+            connection.release();
+            if (err) {
+              console.log(err);
+              return res.status(500).send("Error updating attendance status");
+            }
+            res.redirect("/view_all");
+          }
+        );
+      }
+    );
   });
 };
 
-
-
 // Render form to add new student
 exports.form = (req, res) => {
-  res.render('add'); // This assumes you have an 'add.hbs' file in your 'views' folder
+  res.render("add"); // This assumes you have an 'add.hbs' file in your 'views' folder
 };
 
 // Mark attendance for a specific date
 exports.markAttendance = (req, res) => {
-  const { studentId,  status } = req.body;
+  const { studentId, status } = req.body;
   const attendance_date = new Date().toISOString().split("T")[0];
-
 
   pool.getConnection((err, connection) => {
     if (err) throw err;
@@ -382,9 +380,6 @@ exports.markAttendance = (req, res) => {
     });
   });
 };
-
-
-
 
 exports.viewAttendance = (req, res) => {
   pool.getConnection((err, connection) => {
@@ -437,19 +432,16 @@ exports.viewAttendance = (req, res) => {
   });
 };
 
-
-
-
 exports.updateFeesStatus = (req, res) => {
   const { studentId, fees_status } = req.body;
-  const currentDate = new Date().toISOString().split("T")[0]; 
+  const currentDate = new Date().toISOString().split("T")[0];
 
   pool.getConnection((err, connection) => {
     if (err) throw err;
 
     connection.query(
       "UPDATE fees SET fees_status = ?,updated_date = ?  WHERE student_id = ?",
-      [fees_status,currentDate, studentId],
+      [fees_status, currentDate, studentId],
       (err) => {
         connection.release();
         if (err) {
@@ -462,8 +454,6 @@ exports.updateFeesStatus = (req, res) => {
     );
   });
 };
-
-
 
 exports.getFeeStatusForm = (req, res) => {
   pool.getConnection((err, connection) => {
@@ -610,9 +600,6 @@ exports.generateFeeReceipt = async (req, res) => {
   });
 };
 
-
-
-
 exports.viewFeeReceipt = (req, res) => {
   const { studentId } = req.params;
 
@@ -655,9 +642,6 @@ exports.viewFeeReceipt = (req, res) => {
     });
   });
 };
-
-
-
 
 exports.weeklyReport = (req, res) => {
   const { weekStart } = req.query; // Example query param for the week start date
@@ -705,11 +689,6 @@ exports.weeklyReport = (req, res) => {
   });
 };
 
-
-
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
 exports.signup = (req, res) => {
   const { name, email, password } = req.body;
 
@@ -717,7 +696,6 @@ exports.signup = (req, res) => {
     return res.status(400).send("All fields are required.");
   }
 
-  // Hash the password here
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   pool.getConnection((err, connection) => {
@@ -734,12 +712,12 @@ exports.signup = (req, res) => {
         return res.status(500).send("Error registering user.");
       }
 
-       res.redirect("/");
+      res.redirect("/login");
     });
   });
 };
 
-
+// **User Login**
 exports.login = (req, res) => {
   const { email, password } = req.body;
 
@@ -769,28 +747,37 @@ exports.login = (req, res) => {
         return res.status(400).send("Invalid email or password.");
       }
 
-      // Generate JWT token
+      // **Generate JWT Token**
       const token = jwt.sign(
         { id: user.id, email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
 
-      res.json({ message: "Login successful", token });
+      // **Set the token in HTTP-only cookie**
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 3600000,
+      });
+
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // Secure only in production
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // Prevents CSRF attacks
+        maxAge: 3600000, // 1 hour
+      };
+
+      res.cookie("token", token, cookieOptions);
+
+      res.redirect("/");
     });
   });
 };
 
-
-
-exports.authenticateToken = (req, res, next) => {
-  const token = req.headers["authorization"];
-
-  if (!token) return res.status(403).send("Access denied.");
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).send("Invalid token.");
-    req.user = user;
-    next();
-  });
+// **User Logout**
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.redirect("/login");
 };
+

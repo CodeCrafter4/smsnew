@@ -2,6 +2,7 @@ const express = require("express");
 const exphbs = require("express-handlebars");
 
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 
 const mysql = require("mysql");
 const path = require("path");
@@ -13,16 +14,16 @@ const app = express();
 
 const session = require("express-session");
 
-app.use(
-  session({
-    secret: "muhammed",
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }, // Use `secure: true` if using HTTPS
-  })
-);
+// app.use(
+//   session({
+//     secret: "muhammed",
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { secure: false }, // Use `secure: true` if using HTTPS
+//   })
+// );
 
-
+app.use(cookieParser());
 
 
 
