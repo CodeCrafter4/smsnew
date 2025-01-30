@@ -10,7 +10,7 @@ router.get("/signup", (req, res) => res.render("signup"));
 router.post("/signup", userController.signup);
 router.get("/login", (req, res) => res.render("login"));
 router.post("/login", userController.login);
-router.get("/logout", userController.logout);
+// router.get("/logout", userController.logout);
 
 
 
@@ -27,9 +27,12 @@ router.get("/fees/receipt/download/:studentId",authenticateToken, userController
 
 
 
-router.get("/attendance", userController.viewAttendance);
-router.get("/update/fees-status", userController.getFeeStatusForm);
-router.post("/update/fees-status", userController.updateFeesStatus);
+router.get("/attendance",authenticateToken, userController.viewAttendance);
+router.get("/update/fees-status",authenticateToken, userController.getFeeStatusForm);
+router.post(
+  "/update/fees-status",
+  authenticateToken,userController.updateFeesStatus
+);
 
 
 
@@ -65,7 +68,18 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-router.get("/", requireAuth, userController.view);
+router.get("/", (req, res) => {
+  const isAuthenticated = req.session.user || req.cookies.token ? true : false;
+  res.render("home", { isAuthenticated });
+});
+
+
+
+router.get("/logout", (req, res) => {
+  res.clearCookie("token");
+   res.redirect("/login"); 
+ 
+});
 
 
 

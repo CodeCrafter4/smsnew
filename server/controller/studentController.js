@@ -776,8 +776,5 @@ exports.login = (req, res) => {
 };
 
 // **User Logout**
-exports.logout = (req, res) => {
-  res.clearCookie("token");
-  res.redirect("/login");
-};
+
 

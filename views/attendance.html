@@ -59,7 +59,7 @@
         <tr>
           <th>Name</th>
           <th>Roll Number</th>
-          <th>Attendance Date</th>
+          <th class="d-none d-md-table-cell">Attendance Date</th>
           <th>Attendance Status</th>
         </tr>
       </thead>
@@ -68,7 +68,7 @@
         <tr>
           <td>{{this.name}}</td>
           <td>{{this.roll_number}}</td>
-          <td>{{#if this.attendance_date}}{{formatDateTime this.attendance_date}}{{else}}Not Recorded{{/if}}</td>
+          <td class="d-none d-md-table-cell">{{#if this.attendance_date}}{{formatDateTime this.attendance_date}}{{else}}Not Recorded{{/if}}</td>
           <td>{{#if this.attendance_status}}{{this.attendance_status}}{{else}}Not Recorded{{/if}}</td>
         </tr>
         {{/each}}
