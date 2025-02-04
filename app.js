@@ -9,6 +9,10 @@ const path = require("path");
 
 require("dotenv").config();
 
+// Add these near the top after other requires
+const compression = require('compression');
+const helmet = require('helmet');
+
 // Create MySQL Pool Connection
 const pool = mysql.createPool({
   connectionLimit: 10,
@@ -39,14 +43,19 @@ const app = express();
 
 const session = require("express-session");
 
-// app.use(
-//   session({
-//     secret: "muhammed",
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { secure: false }, // Use `secure: true` if using HTTPS
-//   })
-// );
+// Update session configuration
+app.use(
+  session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  })
+);
 
 app.use(cookieParser());
 
@@ -106,6 +115,10 @@ app.engine("html", hbs.engine);
 app.set("view engine", "html");
 app.set("views", path.join(__dirname, "views"));
 
+// Add these middleware before routes
+app.use(compression()); // Compress responses
+app.use(helmet()); // Security headers
+
 // Export pool for use in other files
 module.exports = { pool };
 
@@ -115,6 +128,24 @@ app.use("/", routes);
 
 // Add this after your other middleware
 app.use(express.static(path.join(__dirname, "public")));
+
+// Add error handling for database connection
+pool.on('connection', (connection) => {
+  console.log('DB Connection established');
+
+  connection.on('error', (err) => {
+    console.error('DB Connection error', err);
+  });
+});
+
+// Add graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received');
+  pool.end((err) => {
+    if (err) console.error('Error closing pool', err);
+    process.exit(0);
+  });
+});
 
 // Add this after your routes
 app.use((err, req, res, next) => {
@@ -128,6 +159,11 @@ app.use((err, req, res, next) => {
 // Add a catch-all route for 404s
 app.use((req, res) => {
   res.status(404).render("error", { error: "Page not found" });
+});
+
+// Add this before your routes
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Start the server
