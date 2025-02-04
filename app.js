@@ -11,20 +11,27 @@ require("dotenv").config();
 
 // Create MySQL Pool Connection
 const pool = mysql.createPool({
-  connectionLimit: 100,
+  connectionLimit: 10,
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectTimeout: 20000,
+  queueLimit: 0,
 });
 
-// Test database connection
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-  } else {
-    console.log("Database connected successfully");
-    connection.release();
+// Add connection error handling
+pool.on("error", (err) => {
+  console.error("Database pool error:", err);
+  if (err.code === "PROTOCOL_CONNECTION_LOST") {
+    console.error("Database connection was closed.");
+  }
+  if (err.code === "ER_CON_COUNT_ERROR") {
+    console.error("Database has too many connections.");
+  }
+  if (err.code === "ECONNREFUSED") {
+    console.error("Database connection was refused.");
   }
 });
 
@@ -105,6 +112,23 @@ module.exports = { pool };
 // Routes configuration (assuming you have a student route in ./server/routes/student)
 const routes = require("./server/routes/student");
 app.use("/", routes);
+
+// Add this after your other middleware
+app.use(express.static(path.join(__dirname, "public")));
+
+// Add this after your routes
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render("error", {
+    error: "Something broke!",
+    details: process.env.NODE_ENV === "development" ? err.message : null,
+  });
+});
+
+// Add a catch-all route for 404s
+app.use((req, res) => {
+  res.status(404).render("error", { error: "Page not found" });
+});
 
 // Start the server
 app.listen(port, () => {
