@@ -16,146 +16,278 @@
     />
     <style>
       body {
-        background: linear-gradient(to right, #f8f9fa, #e9ecef);
-        font-family: "Arial", sans-serif;
-      }
-      .logout {
-        border-radius: 100%;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+        font-family: 'Poppins', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
+      /* Navbar Styling */
       .navbar {
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background: linear-gradient(to right, #1a237e, #283593) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 1rem 0;
       }
 
       .navbar-brand {
-        font-weight: bold;
-        color: #fff;
+        padding: 0;
+        transition: transform 0.3s ease;
+      }
+
+      .navbar-brand:hover {
+        transform: scale(1.05);
+      }
+
+      .logo-container {
+        display: flex;
+        align-items: center;
+      }
+
+      .logo-container svg {
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        transition: transform 0.3s ease;
+      }
+
+      .navbar-brand:hover .logo-container svg {
+        transform: rotate(-10deg);
+      }
+
+      .logo-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1;
+      }
+
+      .logo-subtitle {
+        font-size: 0.7rem;
+        opacity: 0.8;
+        letter-spacing: 0.5px;
       }
 
       .nav-link {
-        color: #ddd !important;
-        font-size: 1.1rem;
-        transition: color 0.3s ease;
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 1rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        margin: 0 0.2rem;
+        border-radius: 25px;
+        transition: all 0.3s ease;
       }
 
       .nav-link:hover {
         color: #fff !important;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
       }
 
-      .form-control {
-        border-radius: 20px;
+      /* Search Bar Styling */
+      .search-bar .form-control {
+        border-radius: 25px;
+        padding: 0.6rem 1.2rem;
+        border: 2px solid transparent;
+        background: rgba(255, 255, 255, 0.9);
+        transition: all 0.3s ease;
       }
 
-      .btn-outline-light {
-        border-radius: 20px;
+      .search-bar .form-control:focus {
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
       }
 
-      .container {
-        padding-top: 30px;
-        padding-bottom: 30px;
+      .search-bar .btn-outline-light {
+        border-radius: 25px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
       }
 
-      .card {
+      .search-bar .btn-outline-light:hover {
+        transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Container Styling */
+      .container {
+        flex: 1;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+      }
+
+      /* Card Styling */
+      .card {
         border: none;
         border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
       }
 
       .card-header {
-        background-color: #007bff;
+        background: linear-gradient(to right, #1976D2, #2196F3);
         color: white;
         border-radius: 15px 15px 0 0;
-      }
-
-      .btn {
-        border-radius: 50px;
-      }
-
-      .search-bar {
-        max-width: 400px;
+        padding: 1rem 1.5rem;
       }
 
       /* Footer Styling */
-      /* Footer Styles */
-      #bgcolor {
-        background: #343a40;
-        color: #fff;
-        padding: 40px 0;
-        font-size: 14px;
-      }
       .footer {
-        background: #343a40;
+        background: linear-gradient(to right, #1a237e, #283593);
         color: #fff;
-        padding: 40px 0;
-        font-size: 14px;
+        padding: 4rem 0 2rem;
+        margin-top: auto;
+      }
+
+      .footer .row {
+        row-gap: 3rem !important;
       }
 
       .footer-title {
-        font-weight: bold;
-        font-size: 18px;
-        margin-bottom: 15px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        padding-bottom: 1rem;
+      }
+
+      .footer-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 50px;
+        height: 3px;
+        background: #4CAF50;
       }
 
       .footer-text {
-        font-size: 14px;
-        opacity: 0.8;
+        font-size: 0.95rem;
+        opacity: 0.9;
+        line-height: 1.8;
+        margin-bottom: 2rem;
+        max-width: 90%;
       }
 
       .footer-links {
         list-style: none;
         padding: 0;
+        margin: 0;
       }
 
       .footer-links li {
-        margin-bottom: 8px;
+        margin-bottom: 1.2rem;
       }
 
       .footer-links a {
-        color: #f8f9fa;
+        color: rgba(255, 255, 255, 0.9);
         text-decoration: none;
-        transition: color 0.3s ease-in-out;
+        transition: all 0.3s ease;
+        display: inline-block;
+        padding: 0.3rem 0;
+        font-size: 0.95rem;
       }
 
       .footer-links a:hover {
-        color: #007bff;
+        color: #4CAF50;
+        transform: translateX(5px);
       }
 
-      /* Social Icons */
       .social-icons {
-        margin-top: 5px;
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
       }
 
       .social-icon {
-        font-size: 20px;
-        margin: 0 8px;
-        display: inline-block;
-        color: #f8f9fa;
-        transition: color 0.3s ease-in-out;
+        font-size: 1.8rem;
+        color: rgba(255, 255, 255, 0.9);
+        transition: all 0.3s ease;
       }
 
       .social-icon:hover {
-        color: #007bff;
+        color: #4CAF50;
+        transform: translateY(-3px);
       }
 
-      /* Ensure Follow Us Section is aligned */
-      @media (min-width: 768px) {
-        .footer .social-icons {
-          display: flex;
+      .copyright-text {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Responsive Adjustments */
+      @media (max-width: 768px) {
+        .navbar-nav {
+          padding: 1rem 0;
+        }
+        
+        .nav-link {
+          margin: 0.3rem 0;
+        }
+
+        .search-bar {
+          margin: 1rem 0;
+        }
+
+        .footer {
+          text-align: center;
+          padding: 3rem 0 1.5rem;
+        }
+
+        .footer-text {
+          max-width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .footer-title {
+          margin-bottom: 1.5rem;
+        }
+
+        .footer-title::after {
+          left: 50%;
+          transform: translateX(-50%);
+        }
+
+        .social-icons {
+          justify-content: center;
+        }
+
+        .logo-container svg {
+          width: 35px;
+          height: 35px;
+        }
+        
+        .logo-text .fs-4 {
+          font-size: 1.2rem !important;
         }
       }
-
-      /* Copyright Section */
-      .copyright-text {
-        font-size: 13px;
-        opacity: 0.7;
-      }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-          <i class="bi bi-duffle m-1"></i>SMS
+        <a class="navbar-brand d-flex align-items-center" href="/">
+          <div class="logo-container me-2">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="18" fill="#4CAF50"/>
+              <path d="M20 10c-3.3 0-6 2.7-6 6v2h4v-2c0-1.1.9-2 2-2s2 .9 2 2v2h4v-2c0-3.3-2.7-6-6-6z" fill="white"/>
+              <rect x="12" y="18" width="16" height="12" rx="2" fill="white"/>
+              <circle cx="20" cy="24" r="2" fill="#4CAF50"/>
+              <rect x="19" y="24" width="2" height="4" fill="#4CAF50"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <span class="fs-4">SMS</span>
+            <span class="logo-subtitle d-none d-sm-inline">Student Management</span>
+          </div>
         </a>
 
         <button
@@ -224,54 +356,134 @@
       </div>
     </nav>
 
-   
+    <!-- Update the toast container section -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+      {{#if success}}
+        <div class="toast show bg-success text-white" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header bg-success text-white">
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body">
+            {{success}}
+          </div>
+        </div>
+      {{/if}}
+      
+      {{#if error}}
+        <div class="toast show bg-danger text-white" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header bg-danger text-white">
+            <strong class="me-auto">Error</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body">
+            {{error}}
+          </div>
+        </div>
+      {{/if}}
+    </div>
 
     <div class="container pt-5 pb-5">{{{body}}}</div>
 
     <!-- Footer -->
     <footer class="footer mt-5">
-      <div class="container" id="bgcolor">
-        <div class="row text-center text-md-start align-items-center">
+      <div class="container">
+        <div class="row">
           <!-- About Section -->
-          <div class="col-md-4 mb-3 mb-md-0">
+          <div class="col-lg-4 col-md-6">
             <h5 class="footer-title">Student Management System</h5>
             <p class="footer-text">
-              Manage students, attendance, and fees easily with our system.
+              Manage students, attendance, and fees easily with our comprehensive system. 
+              Streamline your administrative tasks efficiently.
             </p>
           </div>
 
           <!-- Quick Links -->
-          <div class="col-md-4 mb-3 mb-md-0">
+          <div class="col-lg-4 col-md-6">
             <h5 class="footer-title">Quick Links</h5>
             <ul class="footer-links">
-              <li><a href="/">Home</a></li>
-              <li><a href="/add">Add Student</a></li>
-              <li><a href="/attendance">Attendance</a></li>
-              <li><a href="/update/fees-status">Fee Management</a></li>
+              <li><a href="/"><i class="bi bi-chevron-right me-2"></i>Home</a></li>
+              <li><a href="/add"><i class="bi bi-chevron-right me-2"></i>Add Student</a></li>
+              <li><a href="/attendance"><i class="bi bi-chevron-right me-2"></i>Attendance</a></li>
+              <li><a href="/update/fees-status"><i class="bi bi-chevron-right me-2"></i>Fee Management</a></li>
             </ul>
           </div>
 
-          <!-- Social Media (Follow Us) -->
-          <div
-            class="col-md-4 d-flex flex-column align-items-center align-items-md-center"
-          >
-            <h5 class="footer-title">Follow Us</h5>
-            <div class="d-flex justify-content-center social-icons">
-              <a href="#" class="social-icon"><i class="bi bi-facebook"></i></a>
-              <a href="#" class="social-icon"><i class="bi bi-twitter"></i></a>
-              <a href="#" class="social-icon"><i class="bi bi-linkedin"></i></a>
-              <a href="#" class="social-icon"><i class="bi bi-envelope"></i></a>
+          <!-- Social Media -->
+          <div class="col-lg-4 col-md-6">
+            <h5 class="footer-title">Connect With Us</h5>
+            <p class="footer-text">Follow us on social media to stay updated with latest news and announcements.</p>
+            <div class="social-icons">
+              <a href="#" class="social-icon" title="Facebook"><i class="bi bi-facebook"></i></a>
+              <a href="#" class="social-icon" title="Twitter"><i class="bi bi-twitter"></i></a>
+              <a href="#" class="social-icon" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+              <a href="#" class="social-icon" title="Email"><i class="bi bi-envelope"></i></a>
             </div>
           </div>
         </div>
 
         <!-- Copyright -->
-        <div class="text-center copyright-text mt-3">
-          © 2024 Student Management System | All Rights Reserved.
+        <div class="text-center copyright-text">
+          © 2025 Student Management System | All Rights Reserved.
         </div>
       </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const successMsg = urlParams.get('success');
+      const errorMsg = urlParams.get('error');
+
+      // Function to create and show toast
+      function showToast(message, type) {
+        const toastContainer = document.querySelector('.toast-container');
+        
+        const toastHtml = `
+          <div class="toast show bg-${type} text-white" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-${type} text-white">
+              <strong class="me-auto">${type === 'success' ? 'Success' : 'Error'}</strong>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+              ${message}
+            </div>
+          </div>
+        `;
+        
+        toastContainer.innerHTML = toastHtml;
+
+        // Auto-hide toast after 5 seconds
+        setTimeout(() => {
+          const toast = toastContainer.querySelector('.toast');
+          if (toast) {
+            toast.remove();
+          }
+        }, 5000);
+      }
+
+      // Show toast if there's a message in URL parameters
+      if (successMsg) {
+        showToast(successMsg, 'success');
+      } else if (errorMsg) {
+        showToast(errorMsg, 'danger');
+      }
+
+      // Initialize all toasts
+      document.addEventListener('DOMContentLoaded', function() {
+        const toasts = document.querySelectorAll('.toast');
+        toasts.forEach(toast => {
+          // Initialize Bootstrap toast
+          const bsToast = new bootstrap.Toast(toast);
+          bsToast.show();
+          
+          // Auto-hide after 5 seconds
+          setTimeout(() => {
+            bsToast.hide();
+          }, 5000);
+        });
+      });
+    </script>
   </body>
 </html>

@@ -1,82 +1,566 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance Details</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-    crossorigin="anonymous"
-  />
-  <style>
-    body {
-      background: linear-gradient(to right, #f8f9fa, #e9ecef);
-      font-family: 'Arial', sans-serif;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance Management</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <style>
+      body {
+        background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        font-family: "Arial", sans-serif;
+      }
 
-    .container {
-      margin-top: 50px;
-      background: #fff;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
+      .container {
+        margin-top: 30px;
+        margin-bottom: 30px;
+      }
 
-    h2 {
-      color: #007bff;
-      text-align: center;
-      margin-bottom: 30px;
-    }
+      .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
 
-    .table {
-      border-radius: 15px;
-      overflow: hidden;
-    }
+      .card-header {
+        background: linear-gradient(to right, #0d6efd, #0b5ed7);
+        color: white;
+        border-radius: 15px 15px 0 0 !important;
+        padding: 1rem 1.5rem;
+      }
 
-    .table thead {
-      background-color: #007bff;
-      color: #fff;
-    }
+      .table {
+        margin-bottom: 0;
+      }
 
-    .btn-primary {
-      background: #007bff;
-      border: none;
-      border-radius: 30px;
-    }
+      .table th {
+        font-weight: 600;
+        background-color: #f8f9fa;
+      }
 
-    .btn-primary:hover {
-      background: #0056b3;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Attendance Details</h2>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Roll Number</th>
-          <th class="d-none d-md-table-cell">Attendance Date</th>
-          <th>Attendance Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{#each rows}}
-        <tr>
-          <td>{{this.name}}</td>
-          <td>{{this.roll_number}}</td>
-          <td class="d-none d-md-table-cell">{{#if this.attendance_date}}{{formatDateTime this.attendance_date}}{{else}}Not Recorded{{/if}}</td>
-          <td>{{#if this.attendance_status}}{{this.attendance_status}}{{else}}Not Recorded{{/if}}</td>
-        </tr>
-        {{/each}}
-      </tbody>
-    </table>
-    <div class="text-center">
-      <a href="/" class="btn btn-primary mt-3">Back to Home</a>
+      .avatar-circle {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        margin-right: 10px;
+      }
+
+      .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+      }
+
+      .date-selector {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .attendance-summary {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .summary-card {
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        color: white;
+        margin-bottom: 10px;
+      }
+
+      .present-card {
+        background: linear-gradient(45deg, #28a745, #20c997);
+      }
+
+      .absent-card {
+        background: linear-gradient(45deg, #dc3545, #f86b7d);
+      }
+
+      .total-card {
+        background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+      }
+
+      .progress {
+        background-color: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .progress-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: width 0.6s ease;
+      }
+
+      .card {
+        transition: transform 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+      }
+
+      .load-btn {
+        min-width: 200px;
+        margin: 1rem auto;
+      }
+
+      @media (max-width: 576px) {
+        .load-btn {
+          width: 100%;
+          margin: 1rem 0;
+          padding: 0.6rem 1.5rem;
+        }
+
+        .container {
+          padding: 10px;
+        }
+
+        .card-body {
+          padding: 15px;
+        }
+
+        .btn {
+          margin-bottom: 10px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .load-btn {
+          width: 100%;
+          margin: 0.5rem 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Date Selector -->
+      <div class="date-selector">
+        <div class="row align-items-end">
+          <div class="col-md-6">
+            <label for="attendanceDate" class="form-label">Select Date</label>
+            <input
+              type="date"
+              class="form-control"
+              id="attendanceDate"
+              value="{{currentDate}}"
+            />
+          </div>
+          <div
+            class="d-flex flex-column flex-md-row gap-3 justify-content-center mb-4"
+          >
+            <button
+              onclick="loadAttendance()"
+              class="btn btn-primary btn-lg load-btn"
+            >
+              <i class="bi bi-calendar-check me-2"></i>Load Attendance
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Table -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>Student Attendance
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Roll Number</th>
+                  <th class="d-none d-md-table-cell">Class</th>
+                  <th class="text-center">Attendance</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each rows}}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-circle">{{firstChar this.name}}</div>
+                      <div>{{this.name}}</div>
+                    </div>
+                  </td>
+                  <td>{{this.roll_number}}</td>
+                  <td class="d-none d-md-table-cell">{{this.class}}</td>
+                  <td class="text-center">
+                    <div class="form-check d-inline-block">
+                      <input type="checkbox" class="form-check-input
+                      attendance-checkbox" data-student-id="{{this.student_id}}"
+                      {{#if this.is_present}}checked{{/if}}
+                      onchange="updateAttendance(this)">
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <span
+                      class="badge {{#if this.is_present}}bg-success{{else}}bg-danger{{/if}}"
+                    >
+                      {{#if this.is_present}}Present{{else}}Absent{{/if}}
+                    </span>
+                  </td>
+                </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Summary -->
+      <div class="attendance-summary">
+        <h5 class="mb-4">Today's Summary</h5>
+        <div class="row">
+          <div class="col-md-4">
+            <div class="summary-card present-card">
+              <h3 class="mb-2" id="presentCount">0</h3>
+              <p class="mb-0">Present</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="summary-card absent-card">
+              <h3 class="mb-2" id="absentCount">0</h3>
+              <p class="mb-0">Absent</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="summary-card total-card">
+              <h3 class="mb-2" id="totalCount">0</h3>
+              <p class="mb-0">Total Students</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add this after the attendance summary section -->
+      <div class="card shadow-lg mt-4">
+        <div class="card-header bg-primary text-white py-3">
+          <h4 class="mb-0 text-center">
+            <i class="bi bi-calendar-week me-2"></i>Weekly Attendance Report
+          </h4>
+        </div>
+        <div class="card-body p-4">
+          <!-- Weekly Report Controls -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input
+                  type="date"
+                  class="form-control"
+                  id="weekStart"
+                  name="weekStart"
+                  required
+                />
+                <label for="weekStart">Select Week Start Date</label>
+              </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <button
+                onclick="generateWeeklyReport()"
+                class="btn btn-primary w-100"
+              >
+                <i class="bi bi-graph-up me-2"></i>Generate Report
+              </button>
+            </div>
+          </div>
+
+          <!-- Weekly Report Table -->
+          <div id="weeklyReportSection" style="display: none">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Student</th>
+                    <th>Mon</th>
+                    <th>Tue</th>
+                    <th>Wed</th>
+                    <th>Thu</th>
+                    <th>Fri</th>
+                    <th>Present Days</th>
+                    <th>Attendance %</th>
+                  </tr>
+                </thead>
+                <tbody id="weeklyReportBody">
+                  <!-- Data will be populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Weekly Statistics -->
+            <div class="row mt-4 g-3">
+              <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                  <div class="card-body text-center">
+                    <h3 class="mb-0" id="weeklyTotalStudents">0</h3>
+                    <small>Total Students</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body text-center">
+                    <h3 class="mb-0" id="weeklyAverageAttendance">0%</h3>
+                    <small>Average Attendance</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-info text-white">
+                  <div class="card-body text-center">
+                    <h3 class="mb-0" id="weeklyHighestAttendance">0%</h3>
+                    <small>Highest Attendance</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body text-center">
+                    <h3 class="mb-0" id="weeklyLowestAttendance">0%</h3>
+                    <small>Lowest Attendance</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</body>
+
+    <script>
+      function updateAttendance(checkbox) {
+        const studentId = checkbox.dataset.studentId;
+        const status = checkbox.checked ? "present" : "absent";
+        const date = document.getElementById("attendanceDate").value;
+
+        // Create the request body
+        const data = new URLSearchParams();
+        data.append("studentId", studentId);
+        data.append("status", status);
+        data.append("date", date);
+
+        // Send AJAX request
+        fetch("/attendance/mark", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: data,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              showToast("Attendance updated successfully", "success");
+              updateSummary();
+              updateStatusBadge(checkbox);
+            } else {
+              showToast(data.error || "Failed to update attendance", "danger");
+              checkbox.checked = !checkbox.checked;
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            showToast("Failed to update attendance", "danger");
+            checkbox.checked = !checkbox.checked;
+          });
+      }
+
+      function loadAttendance() {
+        const date = document.getElementById("attendanceDate").value;
+        window.location.href = `/attendance?date=${date}`;
+      }
+
+      function updateStatusBadge(checkbox) {
+        const row = checkbox.closest("tr");
+        const badge = row.querySelector(".badge");
+        if (checkbox.checked) {
+          badge.textContent = "Present";
+          badge.classList.remove("bg-danger");
+          badge.classList.add("bg-success");
+        } else {
+          badge.textContent = "Absent";
+          badge.classList.remove("bg-success");
+          badge.classList.add("bg-danger");
+        }
+      }
+
+      function updateSummary() {
+        const checkboxes = document.querySelectorAll(".attendance-checkbox");
+        const total = checkboxes.length;
+        const present = Array.from(checkboxes).filter(
+          (cb) => cb.checked
+        ).length;
+        const absent = total - present;
+
+        document.getElementById("presentCount").textContent = present;
+        document.getElementById("absentCount").textContent = absent;
+        document.getElementById("totalCount").textContent = total;
+      }
+
+      // Initialize summary on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        updateSummary();
+
+        // Set today's date as default if not already set
+        const dateInput = document.getElementById("attendanceDate");
+        if (!dateInput.value) {
+          const today = new Date().toISOString().split("T")[0];
+          dateInput.value = today;
+        }
+      });
+
+      function showToast(message, type) {
+        const toastContainer = document.querySelector(".toast-container");
+        const toastHtml = `
+        <div class="toast show bg-${type} text-white" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header bg-${type} text-white">
+            <strong class="me-auto">${
+              type === "success" ? "Success" : "Error"
+            }</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body">
+            ${message}
+          </div>
+        </div>
+      `;
+        toastContainer.innerHTML = toastHtml;
+
+        setTimeout(() => {
+          const toast = toastContainer.querySelector(".toast");
+          if (toast) {
+            toast.remove();
+          }
+        }, 5000);
+      }
+
+      function generateWeeklyReport() {
+        const weekStart = document.getElementById("weekStart").value;
+        if (!weekStart) {
+          showToast("Please select a start date", "danger");
+          return;
+        }
+
+        fetch(`/attendance/weekly?weekStart=${weekStart}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              displayWeeklyReport(data.report);
+              updateWeeklyStatistics(data.statistics);
+              document.getElementById("weeklyReportSection").style.display =
+                "block";
+            } else {
+              showToast(data.error || "Failed to generate report", "danger");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            showToast("Failed to generate report", "danger");
+          });
+      }
+
+      function displayWeeklyReport(report) {
+        const tbody = document.getElementById("weeklyReportBody");
+        tbody.innerHTML = "";
+
+        report.forEach((student) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>
+              <div class="d-flex align-items-center">
+                <div class="avatar-circle bg-primary text-white me-2">
+                  ${student.name.charAt(0)}
+                </div>
+                <div>${student.name}</div>
+              </div>
+            </td>
+            ${Object.values(student.attendance)
+              .map(
+                (day) => `
+              <td>
+                <i class="bi ${
+                  day === "present"
+                    ? "bi-check-circle-fill text-success"
+                    : "bi-x-circle-fill text-danger"
+                }"></i>
+              </td>
+            `
+              )
+              .join("")}
+            <td class="fw-bold">${student.presentDays}</td>
+            <td>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar ${getProgressBarColor(
+                  student.attendancePercentage
+                )}" 
+                     role="progressbar" 
+                     style="width: ${student.attendancePercentage}%">
+                  ${student.attendancePercentage}%
+                </div>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function updateWeeklyStatistics(statistics) {
+        document.getElementById("weeklyTotalStudents").textContent =
+          statistics.totalStudents;
+        document.getElementById(
+          "weeklyAverageAttendance"
+        ).textContent = `${statistics.averageAttendance}%`;
+        document.getElementById(
+          "weeklyHighestAttendance"
+        ).textContent = `${statistics.highestAttendance}%`;
+        document.getElementById(
+          "weeklyLowestAttendance"
+        ).textContent = `${statistics.lowestAttendance}%`;
+      }
+
+      function getProgressBarColor(percentage) {
+        if (percentage >= 90) return "bg-success";
+        if (percentage >= 75) return "bg-info";
+        if (percentage >= 60) return "bg-warning";
+        return "bg-danger";
+      }
+
+      // Add this to your existing DOMContentLoaded event listener
+      document.addEventListener("DOMContentLoaded", function () {
+        // Set max date for week selection to current date
+        const weekStartInput = document.getElementById("weekStart");
+        const today = new Date().toISOString().split("T")[0];
+        weekStartInput.setAttribute("max", today);
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>

@@ -1,90 +1,277 @@
-
-    <style>
-        body {
-            background: linear-gradient(to right, #f8f9fa, #e9ecef);
-            font-family: 'Arial', sans-serif;
-        }
-
-        .container {
-            margin-top: 50px;
-            max-width: 600px;
-            background: #fff;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        h2 {
-            color: #007bff;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .form-label {
-            font-weight: bold;
-        }
-
-        .form-control {
-            border-radius: 10px;
-        }
-
-        .btn {
-            border-radius: 30px;
-        }
-
-        .btn-primary {
-            background: #007bff;
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background: #0056b3;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            border: none;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-    </style>
-
-
-    <div class="container">
-        <h2>Add New Student</h2>
-        
-        <form action="/add" method="POST">
-            <div class="mb-3">
-                <label for="name" class="form-label">Full Name</label>
-                <input type="text" class="form-control" id="name" name="name" placeholder="Enter student name" required>
-            </div>
-            
-            <div class="mb-3">
-                <label for="roll_number" class="form-label">Roll Number</label>
-                <input type="text" class="form-control" id="roll_number" name="roll_number" placeholder="Enter roll number" required>
-            </div>
-            
-            <div class="mb-3">
-                <label for="class" class="form-label">Class</label>
-                <input type="text" class="form-control" id="class" name="class" placeholder="Enter class" required>
-            </div>
-            
-            <div class="mb-3">
-                <label for="parent_contact" class="form-label">Parent Contact</label>
-                <input type="text" class="form-control" id="parent_contact" name="parent_contact" placeholder="Enter parent contact number" required>
-            </div>
-
-            <div class="mb-3">
-                <label for="fee_amount" class="form-label">Fee Amount</label>
-                <input type="number" class="form-control" id="fee_amount" name="fee_amount" placeholder="Enter fee amount" required>
-            </div>
-
-            <div class="d-flex justify-content-between">
-                <button type="submit" class="btn btn-primary">Add Student</button>
-                <a href="/" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+<div class="container py-2">
+  <div class="card shadow-lg">
+    <div class="card-header bg-primary text-white py-3">
+      <h4 class="mb-0 text-center">
+        <i class="bi bi-person-plus-fill me-2"></i>Add New Student
+      </h4>
     </div>
 
+    <div class="card-body p-4">
+      <form action="/add" method="POST" class="needs-validation" novalidate>
+        <div class="row g-4">
+          <!-- Name Field -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                name="name"
+                placeholder="Enter student name"
+                required
+                pattern="[A-Za-z\s]+"
+              />
+              <label for="name">Full Name</label>
+              <div class="invalid-feedback">
+                Please enter a valid name (letters only)
+              </div>
+            </div>
+          </div>
+
+          <!-- Roll Number Field -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input
+                type="text"
+                class="form-control"
+                id="roll_number"
+                name="roll_number"
+                placeholder="Enter roll number"
+                required
+                pattern="[A-Za-z0-9]+"
+              />
+              <label for="roll_number">Roll Number</label>
+              <div class="invalid-feedback">
+                Please enter a valid roll number
+              </div>
+            </div>
+          </div>
+
+          <!-- Class Field -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="class" name="class" required>
+                <option value="" selected disabled>Select class</option>
+                <option value="Grade 1">Grade 1</option>
+                <option value="Grade 2">Grade 2</option>
+                <option value="Grade 3">Grade 3</option>
+                <option value="Grade 4">Grade 4</option>
+                <option value="Grade 5">Grade 5</option>
+                <option value="Grade 6">Grade 6</option>
+                <option value="Grade 7">Grade 7</option>
+                <option value="Grade 8">Grade 8</option>
+                <option value="Grade 9">Grade 9</option>
+                <option value="Grade 10">Grade 10</option>
+                <option value="Grade 11">Grade 11</option>
+                <option value="Grade 12">Grade 12</option>
+              </select>
+              <label for="class">Class</label>
+              <div class="invalid-feedback">Please select a class</div>
+            </div>
+          </div>
+
+          <!-- Parent Contact Field -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input
+                type="tel"
+                class="form-control"
+                id="parent_contact"
+                name="parent_contact"
+                placeholder="Enter parent contact"
+                required
+                pattern="[0-9]+"
+                minlength="10"
+                maxlength="10"
+              />
+              <label for="parent_contact">Parent Contact</label>
+              <div class="invalid-feedback">
+                Please enter a valid 10-digit phone number
+              </div>
+            </div>
+          </div>
+
+          <!-- Fee Amount Field -->
+          <div class="col-md-12">
+            <div class="form-floating">
+              <input
+                type="number"
+                class="form-control"
+                id="fee_amount"
+                name="fee_amount"
+                placeholder="Enter fee amount"
+                required
+                min="0"
+                step="0.01"
+              />
+              <label for="fee_amount">Fee Amount (ET)</label>
+              <div class="invalid-feedback">
+                Please enter a valid fee amount
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div
+          class="d-flex flex-column flex-md-row gap-3 justify-content-center mt-4"
+        >
+          <a
+            href="/"
+            class="btn btn-outline-secondary btn-lg order-2 order-md-1"
+          >
+            <i class="bi bi-arrow-left me-2"></i>Cancel
+          </a>
+          <button
+            type="submit"
+            class="btn btn-primary btn-lg order-1 order-md-2"
+          >
+            <i class="bi bi-save me-2"></i>Add Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 900px;
+  }
+
+  .card {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    background: linear-gradient(to right, #1a237e, #283593);
+    border-bottom: none;
+  }
+
+  .form-floating {
+    position: relative;
+  }
+
+  .form-control,
+  .form-select {
+    height: 58px;
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #1a237e;
+    box-shadow: 0 0 0 0.25rem rgba(26, 35, 126, 0.1);
+  }
+
+  .form-floating label {
+    padding-left: 1rem;
+  }
+
+  .btn {
+    border-radius: 10px;
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .btn {
+      width: auto;
+      min-width: 200px;
+    }
+  }
+
+  .btn-primary {
+    background: linear-gradient(to right, #1a237e, #283593);
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(to right, #283593, #1a237e);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(26, 35, 126, 0.3);
+  }
+
+  .btn-outline-secondary {
+    border: 2px solid #6c757d;
+  }
+
+  .btn-outline-secondary:hover {
+    background: #6c757d;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+  }
+
+  .invalid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 576px) {
+    .container {
+      padding: 10px;
+    }
+
+    .card-body {
+      padding: 15px;
+    }
+
+    .btn {
+      padding: 0.6rem 1.5rem;
+      margin-bottom: 5px;
+    }
+  }
+</style>
+
+<script>
+  // Form validation
+  document.addEventListener("DOMContentLoaded", function () {
+    const forms = document.querySelectorAll(".needs-validation");
+
+    Array.from(forms).forEach((form) => {
+      form.addEventListener(
+        "submit",
+        (event) => {
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add("was-validated");
+        },
+        false
+      );
+    });
+
+    // Phone number formatting
+    const phoneInput = document.getElementById("parent_contact");
+    phoneInput.addEventListener("input", function (e) {
+      let x = e.target.value
+        .replace(/\D/g, "")
+        .match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+      e.target.value = !x[2]
+        ? x[1]
+        : !x[3]
+        ? `${x[1]}-${x[2]}`
+        : `${x[1]}-${x[2]}-${x[3]}`;
+    });
+
+    // Fee amount formatting
+    const feeInput = document.getElementById("fee_amount");
+    feeInput.addEventListener("input", function (e) {
+      if (e.target.value.length > 10) {
+        e.target.value = e.target.value.slice(0, 10);
+      }
+    });
+  });
+</script>

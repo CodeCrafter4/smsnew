@@ -9,6 +9,24 @@ const path = require("path");
 
 require("dotenv").config();
 
+// Create MySQL Pool Connection
+const pool = mysql.createPool({
+  connectionLimit: 100,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+// Test database connection
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error("Database connection failed:", err);
+  } else {
+    console.log("Database connected successfully");
+    connection.release();
+  }
+});
 
 const app = express();
 
@@ -24,8 +42,6 @@ const session = require("express-session");
 // );
 
 app.use(cookieParser());
-
-
 
 const port = process.env.PORT || 5000;
 
@@ -52,6 +68,22 @@ const hbs = exphbs.create({
     eq: function (a, b) {
       return a === b;
     },
+    firstChar: function (str) {
+      return str ? str.charAt(0).toUpperCase() : "";
+    },
+    subtract: function (a, b) {
+      return (a || 0) - (b || 0);
+    },
+    getFeeStatusClass: function (status) {
+      switch (status?.toLowerCase()) {
+        case "paid":
+          return "badge-paid";
+        case "partial":
+          return "badge-partial";
+        default:
+          return "badge-pending";
+      }
+    },
   },
 });
 
@@ -67,10 +99,12 @@ app.engine("html", hbs.engine);
 app.set("view engine", "html");
 app.set("views", path.join(__dirname, "views"));
 
+// Export pool for use in other files
+module.exports = { pool };
+
 // Routes configuration (assuming you have a student route in ./server/routes/student)
 const routes = require("./server/routes/student");
 app.use("/", routes);
 
 // Start the server
 app.listen(port, () => console.log(`Listening on port ${port}`));
-

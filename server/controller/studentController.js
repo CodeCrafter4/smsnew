@@ -1,80 +1,39 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const mysql = require("mysql");
-
-//connection pool
-const pool = mysql.createPool({
-  connectionLimit: 100,
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+const { pool } = require("../../app.js");
+const puppeteer = require("puppeteer");
+const fs = require("fs");
+const path = require("path");
 
 //view students
 // View all students, fees, and attendance
 exports.view = (req, res) => {
-  // Connect to the database
   pool.getConnection((err, connection) => {
     if (err) {
       console.error("Database connection failed!", err);
       return;
     }
-    console.log("Connected to the database!");
 
-    // SQL queries
-    const studentQuery = "SELECT * FROM students";
-    const feesQuery = "SELECT * FROM fees";
-    const attendanceQuery = "SELECT * FROM attendance";
+    const currentDate = new Date().toISOString().split("T")[0];
 
-    // Get student data
-    connection.query(studentQuery, (error1, studentRows) => {
-      if (error1) {
-        console.error("Error fetching students: ", error1);
-        connection.release();
-        return;
+    const query = `
+      SELECT 
+        students.*, 
+        fees.fee_amount,
+        CASE WHEN attendance.status = 'present' THEN 1 ELSE 0 END as is_present
+      FROM students 
+      LEFT JOIN fees ON students.student_id = fees.student_id
+      LEFT JOIN attendance ON students.student_id = attendance.student_id 
+        AND attendance.attendance_date = ?
+    `;
+
+    connection.query(query, [currentDate], (error, rows) => {
+      connection.release();
+      if (error) {
+        console.error("Error fetching data:", error);
+        return res.status(500).send("Error fetching data");
       }
-
-      // Get fees data
-      connection.query(feesQuery, (error2, feesRows) => {
-        if (error2) {
-          console.error("Error fetching fees: ", error2);
-          connection.release();
-          return;
-        }
-
-        // Get attendance data
-        connection.query(attendanceQuery, (error3, attendanceRows) => {
-          connection.release(); // Release the connection back to the pool
-
-          if (error3) {
-            console.error("Error fetching attendance: ", error3);
-            return;
-          }
-
-          // Combine student, fees, and attendance data
-          const combinedData = studentRows.map((student) => {
-            const fee =
-              feesRows.find((fee) => fee.student_id === student.student_id) ||
-              {};
-            const attendance =
-              attendanceRows.find(
-                (att) => att.student_id === student.student_id
-              ) || {};
-
-            return {
-              ...student,
-              fee_amount: fee.fee_amount || "N/A", // Default to 'N/A' if no data
-              attendance_date: attendance.date || "N/A", // Default to 'N/A' if no data
-            };
-          });
-
-          // Send the combined data to the "home" view
-          res.render("home", { rows: combinedData });
-
-          // Log the combined data for debugging
-        });
-      });
+      res.render("home", { rows });
     });
   });
 };
@@ -144,6 +103,7 @@ exports.edit = (req, res) => {
 exports.update = (req, res) => {
   const { name, roll_number, class: studentClass, parent_contact } = req.body;
   const id = req.params.id;
+
   pool.getConnection((err, connection) => {
     if (err) throw err;
     connection.query(
@@ -151,11 +111,13 @@ exports.update = (req, res) => {
       [name, roll_number, studentClass, parent_contact, id],
       (err) => {
         connection.release();
-        if (!err) {
-          res.redirect("/");
-        } else {
+        if (err) {
           console.log(err);
+          return res.redirect(
+            `/edit/${id}?error=Failed to update student information`
+          );
         }
+        res.redirect("/?success=Student information updated successfully");
       }
     );
   });
@@ -170,11 +132,11 @@ exports.delete = (req, res) => {
       [id],
       (err) => {
         connection.release();
-        if (!err) {
-          res.redirect("/");
-        } else {
+        if (err) {
           console.log(err);
+          return res.redirect("/?error=Failed to delete student");
         }
+        res.redirect("/?success=Student deleted successfully");
       }
     );
   });
@@ -189,13 +151,11 @@ exports.create = (req, res) => {
     parent_contact,
     fee_amount,
   } = req.body;
-
-  const paid_date = new Date().toISOString().split("T")[0]; // Current date in YYYY-MM-DD format
+  const paid_date = new Date().toISOString().split("T")[0];
 
   pool.getConnection((err, connection) => {
     if (err) throw err;
 
-    // Insert into students table
     connection.query(
       "INSERT INTO students (name, roll_number, class, parent_contact) VALUES (?, ?, ?, ?)",
       [name, roll_number, studentClass, parent_contact],
@@ -203,16 +163,13 @@ exports.create = (req, res) => {
         if (err) {
           console.error(err);
           connection.release();
-          return res
-            .status(500)
-            .send(
-              "The roll number must be uniq, Error inserting into students table"
-            );
+          return res.redirect(
+            "/add?error=The roll number must be unique. Student creation failed."
+          );
         }
 
-        const studentId = results.insertId; // Get the new student ID
+        const studentId = results.insertId;
 
-        // Insert into fees table
         connection.query(
           "INSERT INTO fees (student_id, fee_amount, paid_date) VALUES (?, ?, ?)",
           [studentId, fee_amount, paid_date],
@@ -220,11 +177,9 @@ exports.create = (req, res) => {
             connection.release();
             if (err) {
               console.error(err);
-              return res.status(500).send("Error inserting into fees table");
+              return res.redirect("/add?error=Error adding fee information.");
             }
-
-            // Redirect if all inserts are successful
-            res.redirect("/");
+            res.redirect("/?success=Student added successfully!");
           }
         );
       }
@@ -275,36 +230,185 @@ exports.viewAllStudents = (req, res) => {
 
 // Update Fees Status
 exports.updateFeesStatus = (req, res) => {
-  const studentId = req.params.studentId;
+  const { studentId, fees_status, payment_amount, payment_date } = req.body;
 
   pool.getConnection((err, connection) => {
-    if (err) throw err;
+    if (err) {
+      console.error("Database connection error:", err);
+      return res.redirect(
+        "/update/fees-status?error=Database connection failed"
+      );
+    }
 
-    // Get the current fee status
+    // First check if a fee record exists for this student
     connection.query(
-      "SELECT fees_status FROM fees WHERE student_id = ?",
+      "SELECT fee_amount FROM fees WHERE student_id = ?",
       [studentId],
       (err, results) => {
         if (err) {
           connection.release();
-          console.log(err);
-          return res.status(500).send("Error fetching fee status");
+          console.error("Query error:", err);
+          return res.redirect(
+            "/update/fees-status?error=Error checking fee details"
+          );
         }
 
-        const currentStatus = results[0].fees_status;
-        const newStatus = currentStatus === "pending" ? "paid" : "pending";
+        if (results.length === 0) {
+          connection.release();
+          return res.redirect(
+            "/update/fees-status?error=No fee record found for this student"
+          );
+        }
 
-        // Update the fee status in the database
+        const currentFee = results[0];
+
+        // Check if columns exist and add them if they don't
         connection.query(
-          "UPDATE fees SET fees_status = ? WHERE student_id = ?",
-          [newStatus, studentId],
-          (err) => {
-            connection.release();
+          `SHOW COLUMNS FROM fees LIKE 'paid_amount'`,
+          (err, columns) => {
             if (err) {
-              console.log(err);
-              return res.status(500).send("Error updating fee status");
+              connection.release();
+              console.error("Column check error:", err);
+              return res.redirect(
+                "/update/fees-status?error=Error checking database structure"
+              );
             }
-            res.redirect("/view_all.html");
+
+            const addColumnsIfNeeded = async () => {
+              try {
+                if (columns.length === 0) {
+                  await connection.query(
+                    "ALTER TABLE fees ADD COLUMN paid_amount DECIMAL(10,2) DEFAULT 0"
+                  );
+                }
+
+                await connection.query(
+                  `SHOW COLUMNS FROM fees LIKE 'updated_date'`,
+                  async (err, dateColumns) => {
+                    if (dateColumns.length === 0) {
+                      await connection.query(
+                        "ALTER TABLE fees ADD COLUMN updated_date DATE"
+                      );
+                    }
+
+                    // Now get the current paid amount
+                    connection.query(
+                      "SELECT COALESCE(paid_amount, 0) as current_paid FROM fees WHERE student_id = ?",
+                      [studentId],
+                      (err, paidResults) => {
+                        if (err) {
+                          connection.release();
+                          console.error("Paid amount query error:", err);
+                          return res.redirect(
+                            "/update/fees-status?error=Error fetching current payment"
+                          );
+                        }
+
+                        const currentPaid = parseFloat(
+                          paidResults[0]?.current_paid || 0
+                        );
+                        const newPaidAmount =
+                          currentPaid + parseFloat(payment_amount);
+
+                        // Determine the final status based on the payment amount
+                        let finalStatus = fees_status;
+                        if (newPaidAmount >= currentFee.fee_amount) {
+                          finalStatus = "paid";
+                        } else if (newPaidAmount > 0) {
+                          finalStatus = "partial";
+                        } else {
+                          finalStatus = "pending";
+                        }
+
+                        // Update the fees table
+                        const updateQuery = `
+                          UPDATE fees 
+                          SET 
+                            fees_status = ?,
+                            updated_date = ?,
+                            paid_amount = ?
+                          WHERE student_id = ?
+                        `;
+
+                        connection.query(
+                          updateQuery,
+                          [finalStatus, payment_date, newPaidAmount, studentId],
+                          (err) => {
+                            if (err) {
+                              connection.release();
+                              console.error("Update error:", err);
+                              return res.redirect(
+                                "/update/fees-status?error=Error updating fee status"
+                              );
+                            }
+
+                            // Create fee_payments table
+                            const createPaymentsTable = `
+                              CREATE TABLE IF NOT EXISTS fee_payments (
+                                payment_id INT PRIMARY KEY AUTO_INCREMENT,
+                                student_id INT NOT NULL,
+                                amount DECIMAL(10,2) NOT NULL,
+                                payment_date DATE NOT NULL,
+                                status VARCHAR(20) NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+                              )
+                            `;
+
+                            connection.query(createPaymentsTable, (err) => {
+                              if (err) {
+                                connection.release();
+                                console.error("Table creation error:", err);
+                                return res.redirect(
+                                  "/update/fees-status?error=Error setting up payment history"
+                                );
+                              }
+
+                              // Record the payment
+                              const paymentQuery = `
+                                INSERT INTO fee_payments 
+                                (student_id, amount, payment_date, status) 
+                                VALUES (?, ?, ?, ?)
+                              `;
+
+                              connection.query(
+                                paymentQuery,
+                                [
+                                  studentId,
+                                  payment_amount,
+                                  payment_date,
+                                  finalStatus,
+                                ],
+                                (err) => {
+                                  connection.release();
+                                  if (err) {
+                                    console.error("Payment record error:", err);
+                                    return res.redirect(
+                                      "/update/fees-status?error=Payment recorded but history update failed"
+                                    );
+                                  }
+                                  res.redirect(
+                                    "/update/fees-status?success=Payment updated successfully"
+                                  );
+                                }
+                              );
+                            });
+                          }
+                        );
+                      }
+                    );
+                  }
+                );
+              } catch (error) {
+                connection.release();
+                console.error("Database structure error:", error);
+                return res.redirect(
+                  "/update/fees-status?error=Error updating database structure"
+                );
+              }
+            };
+
+            addColumnsIfNeeded();
           }
         );
       }
@@ -359,243 +463,236 @@ exports.form = (req, res) => {
 
 // Mark attendance for a specific date
 exports.markAttendance = (req, res) => {
-  const { studentId, status } = req.body;
-  const attendance_date = new Date().toISOString().split("T")[0];
+  const { studentId, status, date } = req.body;
+  const attendance_date = date || new Date().toISOString().split("T")[0];
+
+  // Validate inputs
+  if (!studentId || !status) {
+    return res.json({
+      success: false,
+      error: "Student ID and status are required",
+    });
+  }
 
   pool.getConnection((err, connection) => {
-    if (err) throw err;
+    if (err) {
+      console.error("Database connection error:", err);
+      return res.json({
+        success: false,
+        error: "Database connection failed",
+      });
+    }
 
-    const query = `
-      INSERT INTO attendance (student_id, attendance_date, status)
-      VALUES (?, ?, ?)
-      ON DUPLICATE KEY UPDATE status = VALUES(status)
+    // First check if an attendance record exists for this date
+    const checkQuery = `
+      SELECT * FROM attendance 
+      WHERE student_id = ? AND attendance_date = ?
     `;
-    connection.query(query, [studentId, attendance_date, status], (err) => {
-      connection.release();
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error marking attendance");
+
+    connection.query(
+      checkQuery,
+      [studentId, attendance_date],
+      (checkErr, checkResults) => {
+        if (checkErr) {
+          connection.release();
+          console.error("Check query error:", checkErr);
+          return res.json({
+            success: false,
+            error: "Failed to check existing attendance",
+          });
+        }
+
+        let query;
+        let params;
+
+        if (checkResults.length > 0) {
+          // Update existing record
+          query = `
+          UPDATE attendance 
+          SET status = ? 
+          WHERE student_id = ? AND attendance_date = ?
+        `;
+          params = [status, studentId, attendance_date];
+        } else {
+          // Insert new record
+          query = `
+          INSERT INTO attendance (student_id, attendance_date, status) 
+          VALUES (?, ?, ?)
+        `;
+          params = [studentId, attendance_date, status];
+        }
+
+        connection.query(query, params, (err, result) => {
+          connection.release();
+
+          if (err) {
+            console.error("Attendance update error:", err);
+            return res.json({
+              success: false,
+              error: "Failed to update attendance",
+            });
+          }
+
+          res.json({
+            success: true,
+            message: "Attendance marked successfully",
+          });
+        });
       }
-      res.redirect("/view_all");
-    });
+    );
   });
 };
 
 exports.viewAttendance = (req, res) => {
+  const selectedDate = req.query.date || new Date().toISOString().split("T")[0];
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error("Database connection failed!", err);
       return res.status(500).send("Database connection failed");
     }
 
-    // Query to fetch attendance details
     const query = `
       SELECT 
-        students.name, 
-        students.roll_number, 
-        attendance.attendance_date, 
-        attendance.status AS attendance_status
+        students.*, 
+        CASE WHEN attendance.status = 'present' THEN 1 ELSE 0 END as is_present
       FROM 
         students
       LEFT JOIN 
-        attendance ON students.student_id = attendance.student_id
+        attendance ON students.student_id = attendance.student_id 
+        AND attendance.attendance_date = ?
+      ORDER BY students.name
     `;
 
-    connection.query(query, (err, rows) => {
+    connection.query(query, [selectedDate], (err, rows) => {
       connection.release();
       if (err) {
         console.error("Error fetching attendance data:", err);
         return res.status(500).send("Error fetching attendance data");
       }
 
-      // Format the attendance_date
-      const formattedRows = rows.map((row) => {
-        if (row.attendance_date) {
-          const options = {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          };
-          row.attendance_date = new Date(
-            row.attendance_date
-          ).toLocaleDateString("en-US", options);
-        } else {
-          row.attendance_date = "N/A";
-        }
-        return row;
+      res.render("attendance", {
+        rows,
+        currentDate: selectedDate,
       });
-
-      // Render attendance data to a view
-      res.render("attendance", { rows: formattedRows });
     });
-  });
-};
-
-exports.updateFeesStatus = (req, res) => {
-  const { studentId, fees_status } = req.body;
-  const currentDate = new Date().toISOString().split("T")[0];
-
-  pool.getConnection((err, connection) => {
-    if (err) throw err;
-
-    connection.query(
-      "UPDATE fees SET fees_status = ?,updated_date = ?  WHERE student_id = ?",
-      [fees_status, currentDate, studentId],
-      (err) => {
-        connection.release();
-        if (err) {
-          console.error("Error updating fee status:", err);
-          return res.status(500).send("Error updating fee status");
-        }
-
-        res.redirect("/update/fees-status"); // Redirect back to the form
-      }
-    );
   });
 };
 
 exports.getFeeStatusForm = (req, res) => {
   pool.getConnection((err, connection) => {
-    if (err) throw err;
+    if (err) {
+      console.error("Database connection error:", err);
+      return res.status(500).send("Database connection failed");
+    }
 
-    // Fetch all students and their fees_status
-    const query = `
+    // Simplified query to avoid missing columns
+    const checkTableQuery = `
       SELECT 
         students.student_id, 
         students.name,
         students.roll_number,
+        fees.fee_amount,
         fees.fees_status,
-        fees.updated_date AS last_updated_date
+        fees.updated_date as last_payment_date
       FROM 
         students 
       LEFT JOIN 
         fees ON students.student_id = fees.student_id
+      ORDER BY 
+        students.name ASC
     `;
 
-    connection.query(query, (err, rows) => {
+    connection.query(checkTableQuery, (err, rows) => {
       connection.release();
+
       if (err) {
-        console.error("Error fetching students:", err);
-        return res.status(500).send("Error fetching students");
+        console.error("Database query error:", err);
+        return res.status(500).send("Error fetching students: " + err.message);
       }
 
-      // Render the form with student data
-      res.render("update_fees_status", { rows });
+      try {
+        // Format the data with default values
+        const formattedRows = rows.map((row) => ({
+          ...row,
+          fee_amount: parseFloat(row.fee_amount) || 0,
+          paid_amount: 0, // Default value until column is created
+          fees_status: row.fees_status || "pending",
+          last_payment_date: row.last_payment_date || null,
+        }));
+
+        // Render the form with student data
+        res.render("update_fees_status", {
+          rows: formattedRows,
+          success: req.query.success,
+          error: req.query.error,
+        });
+      } catch (error) {
+        console.error("Data processing error:", error);
+        res.status(500).send("Error processing student data");
+      }
     });
   });
 };
-
-const puppeteer = require("puppeteer");
-const fs = require("fs");
-const path = require("path");
 
 exports.generateFeeReceipt = async (req, res) => {
   const { studentId } = req.params;
 
   pool.getConnection((err, connection) => {
-    if (err) throw err;
+    if (err) {
+      console.error("Database connection error:", err);
+      return res.status(500).send("Database connection failed");
+    }
 
     const query = `
       SELECT 
-        students.name, 
-        students.roll_number, 
-        students.class, 
-        students.parent_contact, 
-        fees.fee_amount, 
-        fees.fees_status, 
-        fees.updated_date 
-      FROM 
-        students 
-      LEFT JOIN 
-        fees ON students.student_id = fees.student_id 
-      WHERE 
-        students.student_id = ?
+        students.name,
+        students.roll_number,
+        students.class,
+        fees.fee_amount,
+        fees.paid_amount,
+        fees.fees_status,
+        fees.updated_date,
+        (
+          SELECT amount 
+          FROM fee_payments 
+          WHERE student_id = students.student_id 
+          ORDER BY payment_date DESC 
+          LIMIT 1
+        ) as last_payment_amount,
+        (
+          SELECT payment_date 
+          FROM fee_payments 
+          WHERE student_id = students.student_id 
+          ORDER BY payment_date DESC 
+          LIMIT 1
+        ) as last_payment_date
+      FROM students 
+      LEFT JOIN fees ON students.student_id = fees.student_id
+      WHERE students.student_id = ?
     `;
 
-    connection.query(query, [studentId], async (err, results) => {
+    connection.query(query, [studentId], (err, results) => {
       connection.release();
       if (err) {
-        console.error("Error fetching fee receipt:", err);
-        return res.status(500).send("Error generating fee receipt");
+        console.error("Database query error:", err);
+        return res.status(500).send("Error fetching student data");
       }
 
-      if (results.length === 0) {
-        return res.status(404).send("No receipt found for this student");
+      if (!results || results.length === 0) {
+        return res.status(404).send("No student data found");
       }
 
       const receiptData = results[0];
-
-      // Render the receipt as HTML
-      const receiptHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Fee Receipt</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .receipt { max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
-            .receipt h2 { text-align: center; }
-            .receipt .details { margin-bottom: 20px; }
-            .receipt .details p { margin: 5px 0; }
-            .receipt .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #555; }
-          </style>
-        </head>
-        <body>
-          <div class="receipt">
-            <h2>Fee Receipt</h2>
-            <div class="details">
-              <p><strong>Name:</strong> ${receiptData.name}</p>
-              <p><strong>Roll Number:</strong> ${receiptData.roll_number}</p>
-              <p><strong>Class:</strong> ${receiptData.class}</p>
-              <p><strong>Parent Contact:</strong> ${
-                receiptData.parent_contact
-              }</p>
-              <hr>
-              <p><strong>Fee Amount:</strong> ${receiptData.fee_amount}</p>
-              <p><strong>Fee Status:</strong> ${receiptData.fees_status}</p>
-              <p><strong>Last Updated:</strong> ${
-                receiptData.updated_date || "N/A"
-              }</p>
-            </div>
-            <div class="footer">
-              <p>Thank you!</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Generate PDF using Puppeteer
-      try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        await page.setContent(receiptHtml);
-        const pdfPath = path.join(
-          __dirname,
-          `../../public/receipts/receipt_${studentId}.pdf`
-        );
-
-        // Create receipts folder if it doesn't exist
-        if (!fs.existsSync(path.dirname(pdfPath))) {
-          fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
-        }
-
-        await page.pdf({ path: pdfPath, format: "A4" });
-        await browser.close();
-
-        // Send the PDF file to the user
-        res.download(pdfPath, `receipt_${studentId}.pdf`, (err) => {
-          if (err) {
-            console.error("Error sending PDF:", err);
-          }
-        });
-      } catch (pdfError) {
-        console.error("Error generating PDF:", pdfError);
-        return res.status(500).send("Error generating PDF");
-      }
+      res.render("fee_receipt", {
+        receipt: {
+          ...receiptData,
+          receiptNo: `${studentId}-${Date.now()}`,
+          currentDate: new Date().toLocaleDateString(),
+          balance:
+            (receiptData.fee_amount || 0) - (receiptData.paid_amount || 0),
+        },
+      });
     });
   });
 };
@@ -644,48 +741,113 @@ exports.viewFeeReceipt = (req, res) => {
 };
 
 exports.weeklyReport = (req, res) => {
-  const { weekStart } = req.query; // Example query param for the week start date
-
+  const { weekStart } = req.query;
   if (!weekStart) {
-    return res.status(400).send("Week start date is required.");
+    return res.json({ success: false, error: "Week start date is required" });
   }
 
-  // Calculate week end date
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-
-  const formattedStart = new Date(weekStart).toISOString().split("T")[0];
-  const formattedEnd = weekEnd.toISOString().split("T")[0];
+  // Calculate week dates
+  const startDate = new Date(weekStart);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 4); // Monday to Friday (5 days)
 
   pool.getConnection((err, connection) => {
-    if (err) throw err;
+    if (err) {
+      return res.json({ success: false, error: "Database connection failed" });
+    }
 
     const query = `
       SELECT 
-        students.name, 
-        students.roll_number, 
-        attendance.attendance_date, 
-        attendance.status 
+        students.student_id,
+        students.name,
+        attendance.attendance_date,
+        attendance.status
       FROM 
-        attendance 
-      INNER JOIN 
-        students ON attendance.student_id = students.student_id 
+        students
+      LEFT JOIN 
+        attendance ON students.student_id = attendance.student_id
       WHERE 
         attendance.attendance_date BETWEEN ? AND ?
-      ORDER BY attendance.attendance_date ASC
+      ORDER BY 
+        students.name, attendance.attendance_date
     `;
 
-    connection.query(query, [formattedStart, formattedEnd], (error, rows) => {
-      connection.release();
+    connection.query(
+      query,
+      [weekStart, endDate.toISOString().split("T")[0]],
+      (err, results) => {
+        connection.release();
+        if (err) {
+          return res.json({
+            success: false,
+            error: "Failed to fetch attendance data",
+          });
+        }
 
-      if (error) {
-        console.error("Error fetching weekly attendance:", error);
-        return res.status(500).send("Error fetching weekly attendance");
+        // Process the results
+        const studentAttendance = {};
+        let totalAttendance = 0;
+        let studentCount = 0;
+
+        results.forEach((record) => {
+          if (!studentAttendance[record.student_id]) {
+            studentAttendance[record.student_id] = {
+              name: record.name,
+              attendance: {
+                Monday: "absent",
+                Tuesday: "absent",
+                Wednesday: "absent",
+                Thursday: "absent",
+                Friday: "absent",
+              },
+              presentDays: 0,
+            };
+          }
+
+          if (record.status === "present") {
+            const dayOfWeek = new Date(record.attendance_date).toLocaleString(
+              "en-US",
+              { weekday: "long" }
+            );
+            studentAttendance[record.student_id].attendance[dayOfWeek] =
+              "present";
+            studentAttendance[record.student_id].presentDays++;
+          }
+        });
+
+        // Calculate statistics
+        const report = Object.values(studentAttendance).map((student) => {
+          const attendancePercentage = Math.round(
+            (student.presentDays / 5) * 100
+          );
+          totalAttendance += attendancePercentage;
+          studentCount++;
+          return {
+            ...student,
+            attendancePercentage,
+          };
+        });
+
+        const statistics = {
+          totalStudents: studentCount,
+          averageAttendance: studentCount
+            ? Math.round(totalAttendance / studentCount)
+            : 0,
+          highestAttendance: Math.max(
+            ...report.map((s) => s.attendancePercentage)
+          ),
+          lowestAttendance: Math.min(
+            ...report.map((s) => s.attendancePercentage)
+          ),
+        };
+
+        res.json({
+          success: true,
+          report,
+          statistics,
+        });
       }
-
-      const period = `${formattedStart} to ${formattedEnd}`;
-      res.render("weekly_attendance_report", { rows, period });
-    });
+    );
   });
 };
 
@@ -693,7 +855,7 @@ exports.signup = (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).send("All fields are required.");
+    return res.render("signup", { error: "All fields are required." });
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -707,12 +869,14 @@ exports.signup = (req, res) => {
 
       if (error) {
         if (error.code === "ER_DUP_ENTRY") {
-          return res.status(400).send("Email already exists.");
+          return res.render("signup", { error: "Email already exists." });
         }
-        return res.status(500).send("Error registering user.");
+        return res.render("signup", { error: "Error registering user." });
       }
 
-      res.redirect("/login");
+      res.render("login", {
+        success: "Registration successful! Please login.",
+      });
     });
   });
 };
@@ -722,7 +886,7 @@ exports.login = (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).send("Email and password are required.");
+    return res.render("login", { error: "Email and password are required." });
   }
 
   pool.getConnection((err, connection) => {
@@ -733,18 +897,18 @@ exports.login = (req, res) => {
       connection.release();
 
       if (error) {
-        return res.status(500).send("Error logging in.");
+        return res.render("login", { error: "Error logging in." });
       }
 
       if (results.length === 0) {
-        return res.status(400).send("Invalid email or password.");
+        return res.render("login", { error: "Invalid email or password." });
       }
 
       const user = results[0];
       const isValid = bcrypt.compareSync(password, user.password);
 
       if (!isValid) {
-        return res.status(400).send("Invalid email or password.");
+        return res.render("login", { error: "Invalid email or password." });
       }
 
       // **Generate JWT Token**
@@ -770,11 +934,39 @@ exports.login = (req, res) => {
 
       res.cookie("token", token, cookieOptions);
 
-      res.redirect("/");
+      res.redirect("/?success=Login successful!");
     });
   });
 };
 
 // **User Logout**
+exports.logout = (req, res) => {
+  res.clearCookie("token");
+  res.redirect("/login?success=Logged out successfully");
+};
 
+// Add this new endpoint for payment history
+exports.getPaymentHistory = (req, res) => {
+  const studentId = req.params.studentId;
 
+  pool.getConnection((err, connection) => {
+    if (err) {
+      return res.json({ success: false, error: "Database connection failed" });
+    }
+
+    connection.query(
+      "SELECT * FROM fee_payments WHERE student_id = ? ORDER BY payment_date DESC",
+      [studentId],
+      (err, payments) => {
+        connection.release();
+        if (err) {
+          return res.json({
+            success: false,
+            error: "Error fetching payment history",
+          });
+        }
+        res.json({ success: true, payments });
+      }
+    );
+  });
+};
