@@ -43,7 +43,7 @@ const session = require("express-session");
 
 app.use(cookieParser());
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 
 // Configure Handlebars with custom helpers (like eq)
 const hbs = exphbs.create({
@@ -107,4 +107,6 @@ const routes = require("./server/routes/student");
 app.use("/", routes);
 
 // Start the server
-app.listen(port, () => console.log(`Listening on port ${port}`));
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
