@@ -10,8 +10,8 @@ const path = require("path");
 require("dotenv").config();
 
 // Add these near the top after other requires
-const compression = require('compression');
-const helmet = require('helmet');
+const compression = require("compression");
+const helmet = require("helmet");
 
 // Create MySQL Pool Connection
 const pool = mysql.createPool({
@@ -50,10 +50,10 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
   })
 );
 
@@ -130,19 +130,19 @@ app.use("/", routes);
 app.use(express.static(path.join(__dirname, "public")));
 
 // Add error handling for database connection
-pool.on('connection', (connection) => {
-  console.log('DB Connection established');
+pool.on("connection", (connection) => {
+  console.log("DB Connection established");
 
-  connection.on('error', (err) => {
-    console.error('DB Connection error', err);
+  connection.on("error", (err) => {
+    console.error("DB Connection error", err);
   });
 });
 
 // Add graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received');
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received");
   pool.end((err) => {
-    if (err) console.error('Error closing pool', err);
+    if (err) console.error("Error closing pool", err);
     process.exit(0);
   });
 });
@@ -162,8 +162,8 @@ app.use((req, res) => {
 });
 
 // Add this before your routes
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 // Start the server
