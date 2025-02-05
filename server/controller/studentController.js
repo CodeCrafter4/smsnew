@@ -560,7 +560,7 @@ exports.viewAttendance = (req, res) => {
         students
       LEFT JOIN 
         attendance ON students.student_id = attendance.student_id 
-        AND attendance.attendance_date = ?
+        AND DATE(attendance.attendance_date) = ?
       ORDER BY students.name
     `;
 
