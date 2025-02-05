@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { pool } = require("../../app.js");
+const pool = require("../../config/database");
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");

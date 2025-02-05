@@ -1,7 +1,21 @@
 const express = require("express");
 const router = express.Router();
-const userController = require("../controller/studentController");
-const { authenticateToken } = require("../middleware/authMiddleware");
+const path = require("path");
+
+// Import controllers and middleware
+const userController = require(path.join(
+  __dirname,
+  "..",
+  "controller",
+  "studentController"
+));
+const { authenticateToken } = require(path.join(
+  __dirname,
+  "..",
+  "middleware",
+  "authMiddleware"
+));
+const pool = require("../../config/database");
 
 // **Authentication Routes**
 router.get("/signup", (req, res) => res.render("signup"));
