@@ -371,11 +371,11 @@ exports.markAttendance = (req, res) => {
   const { studentId, status, date } = req.body;
   const attendance_date = date || new Date().toISOString().split("T")[0];
 
-  // Validate inputs
-  if (!studentId || !status) {
+  // Validate status
+  if (status !== "present" && status !== "absent") {
     return res.json({
       success: false,
-      error: "Student ID and status are required",
+      error: "Invalid status value",
     });
   }
 
@@ -391,7 +391,7 @@ exports.markAttendance = (req, res) => {
     // First check if an attendance record exists for this date
     const checkQuery = `
       SELECT * FROM attendance 
-      WHERE student_id = ? AND attendance_date = ?
+      WHERE student_id = ? AND DATE(attendance_date) = DATE(?)
     `;
 
     connection.query(
@@ -415,7 +415,7 @@ exports.markAttendance = (req, res) => {
           query = `
           UPDATE attendance 
           SET status = ? 
-          WHERE student_id = ? AND attendance_date = ?
+          WHERE student_id = ? AND DATE(attendance_date) = DATE(?)
         `;
           params = [status, studentId, attendance_date];
         } else {
@@ -441,6 +441,8 @@ exports.markAttendance = (req, res) => {
           res.json({
             success: true,
             message: "Attendance marked successfully",
+            status: status,
+            date: attendance_date,
           });
         });
       }
@@ -880,56 +882,58 @@ exports.viewWeeklyReport = (req, res) => {
     // Get the current week's date range
     const selectedDate = req.query.date ? new Date(req.query.date) : new Date();
     const monday = new Date(selectedDate);
-    // If no date selected or selected date is not Monday, get the Monday of that week
-    if (!req.query.date || monday.getDay() !== 1) {
-      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-    }
+    monday.setDate(monday.getDate() - monday.getDay() + 1);
     monday.setHours(0, 0, 0, 0);
 
     const friday = new Date(monday);
     friday.setDate(monday.getDate() + 4);
     friday.setHours(23, 59, 59, 999);
 
-    // First get all students
-    const query = `
+    // First get all students to ensure we include everyone
+    const studentsQuery = `
       SELECT 
-        s.student_id,
-        s.name,
-        s.roll_number,
-        s.class,
-        GROUP_CONCAT(
-          CONCAT(
-            DATE(a.attendance_date),
-            ':',
-            COALESCE(a.status, 'absent')
-          )
-          ORDER BY a.attendance_date
-        ) as attendance_records
-      FROM 
-        students s
-      LEFT JOIN 
-        attendance a ON s.student_id = a.student_id 
-        AND DATE(a.attendance_date) BETWEEN DATE(?) AND DATE(?)
-      GROUP BY 
-        s.student_id, s.name, s.roll_number, s.class
-      ORDER BY 
-        s.name
+        student_id,
+        name,
+        roll_number,
+        class
+      FROM students
+      ORDER BY name
     `;
 
-    connection.query(query, [monday, friday], (err, results) => {
-      connection.release();
+    connection.query(studentsQuery, (err, students) => {
       if (err) {
+        connection.release();
         console.error("Error fetching students:", err);
         return res.status(500).send("Error generating report");
       }
 
-      // Process results into weekly format
-      const weeklyData = {};
-      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      // Get all students with their daily attendance
+      const attendanceQuery = `
+        SELECT 
+          student_id,
+          DATE(attendance_date) as attendance_date,
+          status
+        FROM 
+          attendance
+        WHERE 
+          DATE(attendance_date) BETWEEN DATE(?) AND DATE(?)
+      `;
 
-      results.forEach((student) => {
-        if (!weeklyData[student.student_id]) {
+      connection.query(attendanceQuery, [monday, friday], (err, attendance) => {
+        connection.release();
+        if (err) {
+          console.error("Error fetching students:", err);
+          return res.status(500).send("Error generating report");
+        }
+
+        // Process results into weekly format
+        const weeklyData = {};
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+        // First, get all unique students and initialize their data
+        students.forEach((student) => {
           weeklyData[student.student_id] = {
+            student_id: student.student_id,
             name: student.name,
             roll_number: student.roll_number,
             class: student.class,
@@ -943,65 +947,61 @@ exports.viewWeeklyReport = (req, res) => {
             presentCount: 0,
             attendancePercentage: 0,
           };
-        }
+        });
 
-        // Process attendance records if they exist
-        if (student.attendance_records) {
-          const records = student.attendance_records.split(",");
-          records.forEach((record) => {
-            const [dateStr, status] = record.split(":");
-            const date = new Date(dateStr);
-            const day = date.toLocaleString("en-US", { weekday: "long" });
+        // Process attendance records
+        attendance.forEach((record) => {
+          if (record.attendance_date) {
+            const date = new Date(record.attendance_date);
+            const day = date.toLocaleDateString("en-US", { weekday: "long" });
 
             if (days.includes(day)) {
-              weeklyData[student.student_id].attendance[day] = status;
-              if (status === "present") {
-                weeklyData[student.student_id].presentCount++;
+              weeklyData[record.student_id].attendance[day] = record.status;
+              if (record.status === "present") {
+                weeklyData[record.student_id].presentCount++;
               }
             }
-          });
-        }
-      });
+          }
+        });
 
-      // Calculate percentages and summary
-      let totalAttendance = 0;
-      let studentCount = 0;
+        // Calculate percentages and summary
+        let totalAttendance = 0;
+        let studentCount = 0;
 
-      Object.values(weeklyData).forEach((student) => {
-        // Calculate percentage based on actual school days
-        const schoolDays = 5; // Monday to Friday
-        student.attendancePercentage = Math.round(
-          (student.presentCount / schoolDays) * 100
-        );
-        totalAttendance += student.attendancePercentage;
-        studentCount++;
-      });
+        Object.values(weeklyData).forEach((student) => {
+          // Calculate percentage based on actual school days
+          const schoolDays = 5; // Monday to Friday
+          student.attendancePercentage = Math.round(
+            (student.presentCount / schoolDays) * 100
+          );
+          totalAttendance += student.attendancePercentage;
+          studentCount++;
+        });
 
-      // Debug logs
-      console.log("Sample Student Data:", Object.values(weeklyData)[0]);
-      console.log("Total Students:", studentCount);
-      console.log("Total Attendance:", totalAttendance);
+        console.log("Weekly Data Sample:", Object.values(weeklyData)[0]);
+        console.log("Date Range:", { monday, friday });
 
-      const summary = {
-        totalStudents: studentCount,
-        averageAttendance: studentCount
-          ? Math.round(totalAttendance / studentCount)
-          : 0,
-        weekRange: {
-          start: monday.toISOString().split("T")[0],
-          end: friday.toISOString().split("T")[0],
-        },
-      };
-
-      res.render("weekly-report", {
-        weeklyData: Object.values(weeklyData),
-        summary,
-        days,
-        helpers: {
-          eq: function (a, b) {
-            return a === b;
+        const summary = {
+          totalStudents: studentCount,
+          averageAttendance: studentCount
+            ? Math.round(totalAttendance / studentCount)
+            : 0,
+          weekRange: {
+            start: monday.toISOString().split("T")[0],
+            end: friday.toISOString().split("T")[0],
           },
-        },
+        };
+
+        res.render("weekly-report", {
+          weeklyData: Object.values(weeklyData),
+          summary,
+          days,
+          helpers: {
+            eq: function (a, b) {
+              return a === b;
+            },
+          },
+        });
       });
     });
   });

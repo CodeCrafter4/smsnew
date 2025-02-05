@@ -64,6 +64,9 @@ const hbs = exphbs.create({
       if (!amount) return "ET 0";
       return `ET ${amount.toLocaleString()}`;
     },
+    lookup: function (obj, field) {
+      return obj[field];
+    },
   },
 });
 

@@ -15,6 +15,7 @@
     <style>
       body {
         background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        min-height: 100vh;
       }
 
       .summary-card {
@@ -142,12 +143,12 @@
                     <div>{{this.name}}</div>
                     <small class="text-muted">{{this.roll_number}}</small>
                   </td>
-                  {{#each this.attendance}}
+                  {{#each ../days}}
                   <td
-                    class="attendance-cell {{#if (eq this 'present')}}present{{else}}absent{{/if}}"
+                    class="attendance-cell {{#if (eq (lookup ../attendance this) 'present')}}present{{else}}absent{{/if}}"
                   >
                     <i
-                      class="bi {{#if (eq this 'present')}}bi-check-circle{{else}}bi-x-circle{{/if}}"
+                      class="bi {{#if (eq (lookup ../attendance this) 'present')}}bi-check-circle{{else}}bi-x-circle{{/if}}"
                     ></i>
                   </td>
                   {{/each}}
@@ -158,7 +159,7 @@
                     <div class="percentage-bar">
                       <div
                         class="percentage-fill"
-                        style="width: {{this.attendancePercentage}}%"
+                        style="width: '{{this.attendancePercentage}}%'"
                       ></div>
                     </div>
                   </td>
