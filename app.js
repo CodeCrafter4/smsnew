@@ -70,6 +70,8 @@ const hbs = exphbs.create({
   },
 });
 
+
+
 // Session store setup
 const sessionStore = new MySQLStore(
   {
