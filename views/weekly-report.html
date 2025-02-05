@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weekly Attendance Report</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <style>
+      body {
+        background: linear-gradient(to right, #f8f9fa, #e9ecef);
+      }
+
+      .summary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .week-range {
+        color: #6c757d;
+        font-size: 1.1rem;
+      }
+
+      .table th {
+        background-color: #f8f9fa;
+      }
+
+      .attendance-cell {
+        width: 100px;
+        text-align: center;
+      }
+
+      .present {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .absent {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+
+      .percentage-bar {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #e9ecef;
+        overflow: hidden;
+      }
+
+      .percentage-fill {
+        height: 100%;
+        background: linear-gradient(to right, #28a745, #20c997);
+        transition: width 0.3s ease;
+      }
+
+      .back-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container py-4">
+      <!-- Date Selector -->
+      <div class="card shadow-lg mb-4">
+        <div class="card-body">
+          <form id="weekForm" class="d-flex align-items-center gap-3">
+            <div class="flex-grow-1">
+              <label for="weekStart" class="form-label">
+                Select Week Start Date (Monday)
+              </label>
+              <input
+                type="date"
+                class="form-control"
+                id="weekStart"
+                name="weekStart"
+                value="{{summary.weekRange.start}}"
+              />
+            </div>
+            <div class="pt-4">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-calendar2-check me-2"></i>Load Week
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white py-3">
+          <h4 class="mb-0 text-center">
+            <i class="bi bi-calendar-week me-2"></i>Weekly Attendance Report
+          </h4>
+          <p class="text-center mb-0 mt-2 week-range">
+            {{summary.weekRange.start}} to {{summary.weekRange.end}}
+          </p>
+        </div>
+
+        <div class="card-body">
+          <!-- Summary Section -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="summary-card">
+                <h5 class="card-title">Total Students</h5>
+                <h2 class="mb-0">{{summary.totalStudents}}</h2>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="summary-card">
+                <h5 class="card-title">Average Attendance</h5>
+                <h2 class="mb-0">{{summary.averageAttendance}}%</h2>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly Report Table -->
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  {{#each days}}
+                  <th class="attendance-cell">{{this}}</th>
+                  {{/each}}
+                  <th class="attendance-cell">Attendance %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each weeklyData}}
+                <tr>
+                  <td>
+                    <div>{{this.name}}</div>
+                    <small class="text-muted">{{this.roll_number}}</small>
+                  </td>
+                  {{#each this.attendance}}
+                  <td
+                    class="attendance-cell {{#if (eq this 'present')}}present{{else}}absent{{/if}}"
+                  >
+                    <i
+                      class="bi {{#if (eq this 'present')}}bi-check-circle{{else}}bi-x-circle{{/if}}"
+                    ></i>
+                  </td>
+                  {{/each}}
+                  <td>
+                    <div class="text-center mb-1">
+                      {{this.attendancePercentage}}%
+                    </div>
+                    <div class="percentage-bar">
+                      <div
+                        class="percentage-fill"
+                        style="width: {{this.attendancePercentage}}%"
+                      ></div>
+                    </div>
+                  </td>
+                </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Back Button -->
+      <a href="/attendance" class="btn btn-primary back-btn">
+        <i class="bi bi-arrow-left me-2"></i>Back to Daily Attendance
+      </a>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const weekForm = document.getElementById("weekForm");
+        const weekStart = document.getElementById("weekStart");
+
+        // Set max date to current date
+        const today = new Date();
+        const maxDate = new Date(today);
+        maxDate.setDate(today.getDate());
+        weekStart.max = maxDate.toISOString().split("T")[0];
+
+        // Ensure selected date is a Monday
+        weekStart.addEventListener("change", function () {
+          const selected = new Date(this.value);
+          const day = selected.getDay();
+          if (day !== 1) {
+            // 1 is Monday
+            // Adjust to previous Monday
+            selected.setDate(selected.getDate() - ((day + 6) % 7));
+            this.value = selected.toISOString().split("T")[0];
+          }
+        });
+
+        weekForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          window.location.href = `/attendance/weekly?date=${weekStart.value}`;
+        });
+      });
+    </script>
+  </body>
+</html>

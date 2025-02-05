@@ -195,7 +195,7 @@
         right: 1rem;
         pointer-events: none;
       }
-      
+
       .toast {
         pointer-events: auto;
         min-width: 250px;
@@ -204,21 +204,22 @@
         border: none !important;
         opacity: 1 !important;
       }
-      
+
       .toast .toast-body {
         padding: 0.75rem 1.25rem;
         font-size: 0.875rem;
         display: flex;
         align-items: center;
+        background-color: green !important;
         color: white !important;
       }
-      
+
       .toast .btn-close {
         padding: 1rem;
         filter: brightness(0) invert(1);
         opacity: 1;
       }
-      
+
       .toast i {
         font-size: 1.1rem;
         color: white !important;
@@ -257,19 +258,22 @@
           <form id="dateForm" class="d-flex align-items-center gap-3">
             <div class="flex-grow-1">
               <label for="attendanceDate" class="form-label">Select Date</label>
-              <input 
-                type="date" 
-                class="form-control" 
-                id="attendanceDate" 
-                name="date" 
+              <input
+                type="date"
+                class="form-control"
+                id="attendanceDate"
+                name="date"
                 value="{{currentDate}}"
                 max="{{currentDate}}"
-              >
+              />
             </div>
             <div class="pt-4">
               <button type="submit" class="btn btn-primary">
                 <i class="bi bi-calendar2-check me-2"></i>Load Attendance
               </button>
+              <a href="/attendance/weekly" class="btn btn-outline-primary ms-2">
+                <i class="bi bi-calendar-week me-2"></i>Weekly Report
+              </a>
             </div>
           </form>
         </div>
@@ -310,8 +314,13 @@
                   <span>Attendance Rate</span>
                   <span id="attendanceRate">0%</span>
                 </label>
-                <div class="progress" style="height: 20px;">
-                  <div class="progress-bar bg-success" id="attendanceProgressBar" role="progressbar" style="width: 0%"></div>
+                <div class="progress" style="height: 20px">
+                  <div
+                    class="progress-bar bg-success"
+                    id="attendanceProgressBar"
+                    role="progressbar"
+                    style="width: 0%"
+                  ></div>
                 </div>
               </div>
             </div>
@@ -346,14 +355,12 @@
                   </td>
                   <td>
                     <div class="form-check d-flex justify-content-center">
-                      <input
-                        type="checkbox"
-                        class="form-check-input attendance-toggle"
-                        style="cursor: pointer; width: 1.5em; height: 1.5em;"
-                        data-student-id="{{this.student_id}}"
-                        data-current-status="{{#if this.is_present}}present{{else}}absent{{/if}}"
-                        {{#if this.is_present}}checked{{/if}}
-                      >
+                      <input type="checkbox" class="form-check-input
+                      attendance-toggle" style="cursor: pointer; width: 1.5em;
+                      height: 1.5em;" data-student-id="{{this.student_id}}"
+                      data-current-status="{{#if
+                      this.is_present}}present{{else}}absent{{/if}}" {{#if
+                      this.is_present}}checked{{/if}} >
                     </div>
                   </td>
                 </tr>
@@ -380,34 +387,42 @@
       document.addEventListener("DOMContentLoaded", function () {
         // Function to update attendance summary
         function updateAttendanceSummary() {
-          const checkboxes = document.querySelectorAll('.attendance-toggle');
+          const checkboxes = document.querySelectorAll(".attendance-toggle");
           const totalStudents = checkboxes.length;
-          const presentStudents = Array.from(checkboxes).filter(cb => cb.checked).length;
+          const presentStudents = Array.from(checkboxes).filter(
+            (cb) => cb.checked
+          ).length;
           const absentStudents = totalStudents - presentStudents;
-          const attendanceRate = totalStudents ? Math.round((presentStudents / totalStudents) * 100) : 0;
-          
+          const attendanceRate = totalStudents
+            ? Math.round((presentStudents / totalStudents) * 100)
+            : 0;
+
           // Update counters
-          document.getElementById('presentCount').textContent = presentStudents;
-          document.getElementById('absentCount').textContent = absentStudents;
-          document.getElementById('totalCount').textContent = totalStudents;
-          
+          document.getElementById("presentCount").textContent = presentStudents;
+          document.getElementById("absentCount").textContent = absentStudents;
+          document.getElementById("totalCount").textContent = totalStudents;
+
           // Update progress bar
-          document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
-          document.getElementById('attendanceProgressBar').style.width = `${attendanceRate}%`;
+          document.getElementById(
+            "attendanceRate"
+          ).textContent = `${attendanceRate}%`;
+          document.getElementById(
+            "attendanceProgressBar"
+          ).style.width = `${attendanceRate}%`;
         }
 
         // Initial summary update
         updateAttendanceSummary();
 
         // Date form handling
-        const dateForm = document.getElementById('dateForm');
-        const dateInput = document.getElementById('attendanceDate');
+        const dateForm = document.getElementById("dateForm");
+        const dateInput = document.getElementById("attendanceDate");
 
         // Set max date to today
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
         dateInput.max = today;
 
-        dateForm.addEventListener('submit', (e) => {
+        dateForm.addEventListener("submit", (e) => {
           e.preventDefault();
           const selectedDate = dateInput.value;
           window.location.href = `/attendance?date=${selectedDate}`;
@@ -429,7 +444,7 @@
                 body: JSON.stringify({
                   studentId: studentId,
                   status: newStatus,
-                  date: document.getElementById('attendanceDate').value
+                  date: document.getElementById("attendanceDate").value,
                 }),
               });
 
@@ -478,42 +493,46 @@
       function showToast(title, message, type = "info") {
         const toastContainer = document.querySelector(".toast-container");
         // Create toast element
-        const toastEl = document.createElement('div');
+        const toastEl = document.createElement("div");
         toastEl.className = `toast show align-items-center text-white border-0`;
         toastEl.style.cssText = `
-          background-color: ${type === 'success' ? '#198754' : '#dc3545'} !important;
+          background-color: ${
+            type === "success" ? "#198754" : "#dc3545"
+          } !important;
           color: white !important;
           opacity: 1 !important;
         `;
-        toastEl.setAttribute('role', 'alert');
-        toastEl.setAttribute('aria-live', 'assertive');
-        toastEl.setAttribute('aria-atomic', 'true');
-        
+        toastEl.setAttribute("role", "alert");
+        toastEl.setAttribute("aria-live", "assertive");
+        toastEl.setAttribute("aria-atomic", "true");
+
         // Set toast content
         toastEl.innerHTML = `
           <div class="d-flex">
             <div class="toast-body">
-              <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle'} me-2"></i>
+              <i class="bi ${
+                type === "success" ? "bi-check-circle" : "bi-exclamation-circle"
+              } me-2"></i>
               <strong>${title}:</strong> ${message}
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
           </div>
         `;
-        
+
         // Add toast to container
         toastContainer.appendChild(toastEl);
-        
+
         // Initialize and show toast
         const bsToast = new bootstrap.Toast(toastEl, {
           animation: true,
           autohide: true,
-          delay: 3000
+          delay: 3000,
         });
-        
+
         bsToast.show();
-        
+
         // Remove toast after it's hidden
-        toastEl.addEventListener('hidden.bs.toast', () => {
+        toastEl.addEventListener("hidden.bs.toast", () => {
           toastEl.remove();
         });
       }

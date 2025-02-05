@@ -240,179 +240,84 @@ exports.updateFeesStatus = (req, res) => {
       );
     }
 
-    // First check if a fee record exists for this student
-    connection.query(
-      "SELECT fee_amount FROM fees WHERE student_id = ?",
-      [studentId],
-      (err, results) => {
-        if (err) {
-          connection.release();
-          console.error("Query error:", err);
-          return res.redirect(
-            "/update/fees-status?error=Error checking fee details"
-          );
-        }
+    // Start transaction
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        console.error("Transaction error:", err);
+        return res.redirect("/update/fees-status?error=Transaction failed");
+      }
 
-        if (results.length === 0) {
-          connection.release();
-          return res.redirect(
-            "/update/fees-status?error=No fee record found for this student"
-          );
-        }
+      // First insert the payment record
+      const paymentQuery = `
+        INSERT INTO fee_payments (
+          student_id, 
+          amount, 
+          payment_date, 
+          status
+        ) VALUES (?, ?, ?, ?)
+      `;
 
-        const currentFee = results[0];
-
-        // Check if columns exist and add them if they don't
-        connection.query(
-          `SHOW COLUMNS FROM fees LIKE 'paid_amount'`,
-          (err, columns) => {
-            if (err) {
+      connection.query(
+        paymentQuery,
+        [studentId, payment_amount, payment_date, fees_status],
+        (err, result) => {
+          if (err) {
+            return connection.rollback(() => {
               connection.release();
-              console.error("Column check error:", err);
-              return res.redirect(
-                "/update/fees-status?error=Error checking database structure"
+              console.error("Payment insert error:", err);
+              res.redirect(
+                "/update/fees-status?error=Failed to update payment"
               );
-            }
+            });
+          }
 
-            const addColumnsIfNeeded = async () => {
-              try {
-                if (columns.length === 0) {
-                  await connection.query(
-                    "ALTER TABLE fees ADD COLUMN paid_amount DECIMAL(10,2) DEFAULT 0"
+          // Then update the fees table status
+          const updateQuery = `
+            UPDATE fees 
+            SET 
+              fees_status = ?,
+              paid_date = ?,
+              paid_amount = COALESCE(paid_amount, 0) + ?
+            WHERE student_id = ?
+          `;
+
+          connection.query(
+            updateQuery,
+            [fees_status, payment_date, payment_amount, studentId],
+            (err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  console.error("Status update error:", err);
+                  res.redirect(
+                    "/update/fees-status?error=Failed to update status"
                   );
+                });
+              }
+
+              // Commit the transaction
+              connection.commit((err) => {
+                if (err) {
+                  return connection.rollback(() => {
+                    connection.release();
+                    console.error("Commit error:", err);
+                    res.redirect(
+                      "/update/fees-status?error=Failed to commit changes"
+                    );
+                  });
                 }
 
-                await connection.query(
-                  `SHOW COLUMNS FROM fees LIKE 'updated_date'`,
-                  async (err, dateColumns) => {
-                    if (dateColumns.length === 0) {
-                      await connection.query(
-                        "ALTER TABLE fees ADD COLUMN updated_date DATE"
-                      );
-                    }
-
-                    // Now get the current paid amount
-                    connection.query(
-                      "SELECT COALESCE(paid_amount, 0) as current_paid FROM fees WHERE student_id = ?",
-                      [studentId],
-                      (err, paidResults) => {
-                        if (err) {
-                          connection.release();
-                          console.error("Paid amount query error:", err);
-                          return res.redirect(
-                            "/update/fees-status?error=Error fetching current payment"
-                          );
-                        }
-
-                        const currentPaid = parseFloat(
-                          paidResults[0]?.current_paid || 0
-                        );
-                        const newPaidAmount =
-                          currentPaid + parseFloat(payment_amount);
-
-                        // Determine the final status based on the payment amount
-                        let finalStatus = fees_status;
-                        if (newPaidAmount >= currentFee.fee_amount) {
-                          finalStatus = "paid";
-                        } else if (newPaidAmount > 0) {
-                          finalStatus = "partial";
-                        } else {
-                          finalStatus = "pending";
-                        }
-
-                        // Update the fees table
-                        const updateQuery = `
-                          UPDATE fees 
-                          SET 
-                            fees_status = ?,
-                            updated_date = ?,
-                            paid_amount = ?
-                          WHERE student_id = ?
-                        `;
-
-                        connection.query(
-                          updateQuery,
-                          [finalStatus, payment_date, newPaidAmount, studentId],
-                          (err) => {
-                            if (err) {
-                              connection.release();
-                              console.error("Update error:", err);
-                              return res.redirect(
-                                "/update/fees-status?error=Error updating fee status"
-                              );
-                            }
-
-                            // Create fee_payments table
-                            const createPaymentsTable = `
-                              CREATE TABLE IF NOT EXISTS fee_payments (
-                                payment_id INT PRIMARY KEY AUTO_INCREMENT,
-                                student_id INT NOT NULL,
-                                amount DECIMAL(10,2) NOT NULL,
-                                payment_date DATE NOT NULL,
-                                status VARCHAR(20) NOT NULL,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
-                              )
-                            `;
-
-                            connection.query(createPaymentsTable, (err) => {
-                              if (err) {
-                                connection.release();
-                                console.error("Table creation error:", err);
-                                return res.redirect(
-                                  "/update/fees-status?error=Error setting up payment history"
-                                );
-                              }
-
-                              // Record the payment
-                              const paymentQuery = `
-                                INSERT INTO fee_payments 
-                                (student_id, amount, payment_date, status) 
-                                VALUES (?, ?, ?, ?)
-                              `;
-
-                              connection.query(
-                                paymentQuery,
-                                [
-                                  studentId,
-                                  payment_amount,
-                                  payment_date,
-                                  finalStatus,
-                                ],
-                                (err) => {
-                                  connection.release();
-                                  if (err) {
-                                    console.error("Payment record error:", err);
-                                    return res.redirect(
-                                      "/update/fees-status?error=Payment recorded but history update failed"
-                                    );
-                                  }
-                                  res.redirect(
-                                    "/update/fees-status?success=Payment updated successfully"
-                                  );
-                                }
-                              );
-                            });
-                          }
-                        );
-                      }
-                    );
-                  }
-                );
-              } catch (error) {
                 connection.release();
-                console.error("Database structure error:", error);
-                return res.redirect(
-                  "/update/fees-status?error=Error updating database structure"
+                res.redirect(
+                  "/update/fees-status?success=Payment updated successfully"
                 );
-              }
-            };
-
-            addColumnsIfNeeded();
-          }
-        );
-      }
-    );
+              });
+            }
+          );
+        }
+      );
+    });
   });
 };
 
@@ -581,55 +486,49 @@ exports.viewAttendance = (req, res) => {
 
 exports.getFeeStatusForm = (req, res) => {
   pool.getConnection((err, connection) => {
-    if (err) {
-      console.error("Database connection error:", err);
-      return res.status(500).send("Database connection failed");
-    }
+    if (err) throw err;
 
-    // Simplified query to avoid missing columns
-    const checkTableQuery = `
+    const query = `
       SELECT 
-        students.student_id, 
-        students.name,
-        students.roll_number,
-        fees.fee_amount,
-        fees.fees_status,
-        fees.updated_date as last_payment_date
-      FROM 
-        students 
-      LEFT JOIN 
-        fees ON students.student_id = fees.student_id
-      ORDER BY 
-        students.name ASC
+        s.student_id,
+        s.name,
+        s.roll_number,
+        s.class,
+        f.fee_amount,
+        COALESCE(
+          (SELECT SUM(amount) 
+          FROM fee_payments 
+          WHERE student_id = s.student_id), 
+          0
+        ) as paid_amount,
+        f.fees_status,
+        f.paid_date,
+        (
+          SELECT MAX(payment_date) 
+          FROM fee_payments 
+          WHERE student_id = s.student_id
+        ) as last_payment_date
+      FROM students s
+      LEFT JOIN fees f ON s.student_id = f.student_id
+      ORDER BY s.name
     `;
 
-    connection.query(checkTableQuery, (err, rows) => {
+    connection.query(query, (err, rows) => {
       connection.release();
-
-      if (err) {
-        console.error("Database query error:", err);
-        return res.status(500).send("Error fetching students: " + err.message);
-      }
-
-      try {
-        // Format the data with default values
-        const formattedRows = rows.map((row) => ({
-          ...row,
-          fee_amount: parseFloat(row.fee_amount) || 0,
-          paid_amount: 0, // Default value until column is created
-          fees_status: row.fees_status || "pending",
-          last_payment_date: row.last_payment_date || null,
-        }));
-
-        // Render the form with student data
-        res.render("update_fees_status", {
-          rows: formattedRows,
-          success: req.query.success,
-          error: req.query.error,
+      if (!err) {
+        // Calculate fee status based on paid amount
+        rows.forEach((row) => {
+          if (row.paid_amount >= row.fee_amount) {
+            row.fees_status = "paid";
+          } else if (row.paid_amount > 0) {
+            row.fees_status = "partial";
+          } else {
+            row.fees_status = "pending";
+          }
         });
-      } catch (error) {
-        console.error("Data processing error:", error);
-        res.status(500).send("Error processing student data");
+        res.render("update_fee_status", { rows });
+      } else {
+        console.log(err);
       }
     });
   });
@@ -968,5 +867,142 @@ exports.getPaymentHistory = (req, res) => {
         res.json({ success: true, payments });
       }
     );
+  });
+};
+
+exports.viewWeeklyReport = (req, res) => {
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error("Database connection failed!", err);
+      return res.status(500).send("Database connection failed");
+    }
+
+    // Get the current week's date range
+    const selectedDate = req.query.date ? new Date(req.query.date) : new Date();
+    const monday = new Date(selectedDate);
+    // If no date selected or selected date is not Monday, get the Monday of that week
+    if (!req.query.date || monday.getDay() !== 1) {
+      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    }
+    monday.setHours(0, 0, 0, 0);
+
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    friday.setHours(23, 59, 59, 999);
+
+    // First get all students
+    const query = `
+      SELECT 
+        s.student_id,
+        s.name,
+        s.roll_number,
+        s.class,
+        GROUP_CONCAT(
+          CONCAT(
+            DATE(a.attendance_date),
+            ':',
+            COALESCE(a.status, 'absent')
+          )
+          ORDER BY a.attendance_date
+        ) as attendance_records
+      FROM 
+        students s
+      LEFT JOIN 
+        attendance a ON s.student_id = a.student_id 
+        AND DATE(a.attendance_date) BETWEEN DATE(?) AND DATE(?)
+      GROUP BY 
+        s.student_id, s.name, s.roll_number, s.class
+      ORDER BY 
+        s.name
+    `;
+
+    connection.query(query, [monday, friday], (err, results) => {
+      connection.release();
+      if (err) {
+        console.error("Error fetching students:", err);
+        return res.status(500).send("Error generating report");
+      }
+
+      // Process results into weekly format
+      const weeklyData = {};
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+      results.forEach((student) => {
+        if (!weeklyData[student.student_id]) {
+          weeklyData[student.student_id] = {
+            name: student.name,
+            roll_number: student.roll_number,
+            class: student.class,
+            attendance: {
+              Monday: "absent",
+              Tuesday: "absent",
+              Wednesday: "absent",
+              Thursday: "absent",
+              Friday: "absent",
+            },
+            presentCount: 0,
+            attendancePercentage: 0,
+          };
+        }
+
+        // Process attendance records if they exist
+        if (student.attendance_records) {
+          const records = student.attendance_records.split(",");
+          records.forEach((record) => {
+            const [dateStr, status] = record.split(":");
+            const date = new Date(dateStr);
+            const day = date.toLocaleString("en-US", { weekday: "long" });
+
+            if (days.includes(day)) {
+              weeklyData[student.student_id].attendance[day] = status;
+              if (status === "present") {
+                weeklyData[student.student_id].presentCount++;
+              }
+            }
+          });
+        }
+      });
+
+      // Calculate percentages and summary
+      let totalAttendance = 0;
+      let studentCount = 0;
+
+      Object.values(weeklyData).forEach((student) => {
+        // Calculate percentage based on actual school days
+        const schoolDays = 5; // Monday to Friday
+        student.attendancePercentage = Math.round(
+          (student.presentCount / schoolDays) * 100
+        );
+        totalAttendance += student.attendancePercentage;
+        studentCount++;
+      });
+
+      // Debug logs
+      console.log("Sample Student Data:", Object.values(weeklyData)[0]);
+      console.log("Total Students:", studentCount);
+      console.log("Total Attendance:", totalAttendance);
+
+      const summary = {
+        totalStudents: studentCount,
+        averageAttendance: studentCount
+          ? Math.round(totalAttendance / studentCount)
+          : 0,
+        weekRange: {
+          start: monday.toISOString().split("T")[0],
+          end: friday.toISOString().split("T")[0],
+        },
+      };
+
+      res.render("weekly-report", {
+        weeklyData: Object.values(weeklyData),
+        summary,
+        days,
+        helpers: {
+          eq: function (a, b) {
+            return a === b;
+          },
+        },
+      });
+    });
   });
 };

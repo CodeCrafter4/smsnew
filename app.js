@@ -49,6 +49,21 @@ const hbs = exphbs.create({
           return "badge-pending";
       }
     },
+    toLowerCase: function (str) {
+      return str.toLowerCase();
+    },
+    formatDate: function (date) {
+      if (!date) return "N/A";
+      return new Date(date).toLocaleDateString();
+    },
+    formatDateTime: function (date) {
+      if (!date) return "N/A";
+      return new Date(date).toLocaleString();
+    },
+    formatCurrency: function (amount) {
+      if (!amount) return "ET 0";
+      return `ET ${amount.toLocaleString()}`;
+    },
   },
 });
 

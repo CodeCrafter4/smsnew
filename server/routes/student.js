@@ -42,6 +42,11 @@ router.get(
 
 router.get("/attendance", authenticateToken, userController.viewAttendance);
 router.get(
+  "/attendance/weekly",
+  authenticateToken,
+  userController.viewWeeklyReport
+);
+router.get(
   "/update/fees-status",
   authenticateToken,
   userController.getFeeStatusForm
@@ -57,11 +62,6 @@ router.post(
   authenticateToken,
   express.json(),
   userController.markAttendance
-);
-router.get(
-  "/attendance/weekly",
-  authenticateToken,
-  userController.weeklyReport
 );
 
 // **Protected Routes (Require Login)**
