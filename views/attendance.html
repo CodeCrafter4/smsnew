@@ -84,25 +84,37 @@
         border-radius: 8px;
         text-align: center;
         color: white;
-        margin-bottom: 10px;
+        margin-bottom: 0;
+        height: 100%;
       }
 
       .present-card {
         background: linear-gradient(45deg, #28a745, #20c997);
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
       }
 
       .absent-card {
         background: linear-gradient(45deg, #dc3545, #f86b7d);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.2);
       }
 
       .total-card {
         background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2);
+      }
+
+      .attendance-progress {
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
       }
 
       .progress {
         background-color: #e9ecef;
         border-radius: 10px;
         overflow: hidden;
+        height: 20px !important;
       }
 
       .progress-bar {
@@ -111,7 +123,7 @@
         justify-content: center;
         font-size: 0.875rem;
         font-weight: 600;
-        transition: width 0.6s ease;
+        transition: width 0.3s ease;
       }
 
       .card {
@@ -271,6 +283,41 @@
           <p class="text-center mb-0 mt-2">Date: {{currentDate}}</p>
         </div>
 
+        <!-- Daily Attendance Summary -->
+        <div class="card-body border-bottom">
+          <div class="row g-4">
+            <div class="col-md-4">
+              <div class="summary-card present-card">
+                <h5 class="mb-1">Present</h5>
+                <h3 class="mb-0" id="presentCount">0</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="summary-card absent-card">
+                <h5 class="mb-1">Absent</h5>
+                <h3 class="mb-0" id="absentCount">0</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="summary-card total-card">
+                <h5 class="mb-1">Total Students</h5>
+                <h3 class="mb-0" id="totalCount">0</h3>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="attendance-progress">
+                <label class="form-label d-flex justify-content-between">
+                  <span>Attendance Rate</span>
+                  <span id="attendanceRate">0%</span>
+                </label>
+                <div class="progress" style="height: 20px;">
+                  <div class="progress-bar bg-success" id="attendanceProgressBar" role="progressbar" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card-body p-4">
           {{#if rows.length}}
           <div class="table-responsive">
@@ -331,6 +378,27 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
+        // Function to update attendance summary
+        function updateAttendanceSummary() {
+          const checkboxes = document.querySelectorAll('.attendance-toggle');
+          const totalStudents = checkboxes.length;
+          const presentStudents = Array.from(checkboxes).filter(cb => cb.checked).length;
+          const absentStudents = totalStudents - presentStudents;
+          const attendanceRate = totalStudents ? Math.round((presentStudents / totalStudents) * 100) : 0;
+          
+          // Update counters
+          document.getElementById('presentCount').textContent = presentStudents;
+          document.getElementById('absentCount').textContent = absentStudents;
+          document.getElementById('totalCount').textContent = totalStudents;
+          
+          // Update progress bar
+          document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
+          document.getElementById('attendanceProgressBar').style.width = `${attendanceRate}%`;
+        }
+
+        // Initial summary update
+        updateAttendanceSummary();
+
         // Date form handling
         const dateForm = document.getElementById('dateForm');
         const dateInput = document.getElementById('attendanceDate');
@@ -379,6 +447,9 @@
                   badge.classList.add("bg-danger");
                   badge.textContent = "Absent";
                 }
+
+                // Update attendance summary
+                updateAttendanceSummary();
 
                 showToast(
                   "Success",
