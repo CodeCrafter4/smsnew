@@ -55,7 +55,7 @@ router.post(
 router.post(
   "/attendance/mark",
   authenticateToken,
-  express.urlencoded({ extended: true }),
+  express.json(),
   userController.markAttendance
 );
 router.get(
