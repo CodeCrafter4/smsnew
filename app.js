@@ -25,148 +25,159 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-// Add connection error handling
-pool.on("error", (err) => {
-  console.error("Database pool error:", err);
-  if (err.code === "PROTOCOL_CONNECTION_LOST") {
-    console.error("Database connection was closed.");
-  }
-  if (err.code === "ER_CON_COUNT_ERROR") {
-    console.error("Database has too many connections.");
-  }
-  if (err.code === "ECONNREFUSED") {
-    console.error("Database connection was refused.");
-  }
-});
+// Setup function
+const setup = () => {
+  // Add connection error handling
+  pool.on("error", (err) => {
+    console.error("Database pool error:", err);
+    if (err.code === "PROTOCOL_CONNECTION_LOST") {
+      console.error("Database connection was closed.");
+    }
+    if (err.code === "ER_CON_COUNT_ERROR") {
+      console.error("Database has too many connections.");
+    }
+    if (err.code === "ECONNREFUSED") {
+      console.error("Database connection was refused.");
+    }
+  });
 
-const app = express();
+  const app = express();
 
-const session = require("express-session");
+  const session = require("express-session");
 
-// Update session configuration
-app.use(
-  session({
-    secret: process.env.JWT_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  // Update session configuration
+  app.use(
+    session({
+      secret: process.env.JWT_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      },
+    })
+  );
+
+  app.use(cookieParser());
+
+  const port = process.env.PORT || 3000;
+
+  // Configure Handlebars with custom helpers (like eq)
+  const hbs = exphbs.create({
+    extname: ".html",
+    defaultLayout: "main",
+    layoutsDir: path.join(__dirname, "views", "layout"),
+    helpers: {
+      formatDateTime: (dateString) => {
+        if (!dateString) return "N/A";
+        const options = {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true,
+        };
+        return new Date(dateString).toLocaleDateString("en-US", options);
+      },
+      fallback: (value, fallbackValue) => value || fallbackValue,
+      eq: function (a, b) {
+        return a === b;
+      },
+      firstChar: function (str) {
+        return str ? str.charAt(0).toUpperCase() : "";
+      },
+      subtract: function (a, b) {
+        return (a || 0) - (b || 0);
+      },
+      getFeeStatusClass: function (status) {
+        switch (status?.toLowerCase()) {
+          case "paid":
+            return "badge-paid";
+          case "partial":
+            return "badge-partial";
+          default:
+            return "badge-pending";
+        }
+      },
     },
-  })
-);
+  });
 
-app.use(cookieParser());
+  // Middleware for parsing the request body
+  app.use(bodyParser.urlencoded({ extended: false }));
+  app.use(bodyParser.json());
 
-const port = process.env.PORT || 3000;
+  // Serve static files from "public" directory
+  app.use(express.static("public"));
 
-// Configure Handlebars with custom helpers (like eq)
-const hbs = exphbs.create({
-  extname: ".html",
-  defaultLayout: "main",
-  layoutsDir: path.join(__dirname, "views", "layout"),
-  helpers: {
-    formatDateTime: (dateString) => {
-      if (!dateString) return "N/A";
-      const options = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      };
-      return new Date(dateString).toLocaleDateString("en-US", options);
-    },
-    fallback: (value, fallbackValue) => value || fallbackValue,
-    eq: function (a, b) {
-      return a === b;
-    },
-    firstChar: function (str) {
-      return str ? str.charAt(0).toUpperCase() : "";
-    },
-    subtract: function (a, b) {
-      return (a || 0) - (b || 0);
-    },
-    getFeeStatusClass: function (status) {
-      switch (status?.toLowerCase()) {
-        case "paid":
-          return "badge-paid";
-        case "partial":
-          return "badge-partial";
-        default:
-          return "badge-pending";
-      }
-    },
-  },
-});
+  // Set up Handlebars as the templating engine
+  app.engine("html", hbs.engine);
+  app.set("view engine", "html");
+  app.set("views", path.join(__dirname, "views"));
 
-// Middleware for parsing the request body
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+  // Add these middleware before routes
+  app.use(compression()); // Compress responses
+  app.use(helmet()); // Security headers
 
-// Serve static files from "public" directory
-app.use(express.static("public"));
+  // Routes configuration (assuming you have a student route in ./server/routes/student)
+  const routes = require("./server/routes/student");
+  app.use("/", routes);
 
-// Set up Handlebars as the templating engine
-app.engine("html", hbs.engine);
-app.set("view engine", "html");
-app.set("views", path.join(__dirname, "views"));
+  // Add this after your other middleware
+  app.use(express.static(path.join(__dirname, "public")));
 
-// Add these middleware before routes
-app.use(compression()); // Compress responses
-app.use(helmet()); // Security headers
+  // Add error handling for database connection
+  pool.on("connection", (connection) => {
+    console.log("DB Connection established");
+
+    connection.on("error", (err) => {
+      console.error("DB Connection error", err);
+    });
+  });
+
+  // Add graceful shutdown
+  process.on("SIGTERM", () => {
+    console.log("SIGTERM received");
+    pool.end((err) => {
+      if (err) console.error("Error closing pool", err);
+      process.exit(0);
+    });
+  });
+
+  // Add this after your routes
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).render("error", {
+      error: "Something broke!",
+      details: process.env.NODE_ENV === "development" ? err.message : null,
+    });
+  });
+
+  // Add a catch-all route for 404s
+  app.use((req, res) => {
+    res.status(404).render("error", { error: "Page not found" });
+  });
+
+  // Add this before your routes
+  app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  return app;
+};
+
+// Export for Vercel
+module.exports = setup();
+
+// Start server if running directly (not on Vercel)
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
 
 // Export pool for use in other files
-module.exports = { pool };
-
-// Routes configuration (assuming you have a student route in ./server/routes/student)
-const routes = require("./server/routes/student");
-app.use("/", routes);
-
-// Add this after your other middleware
-app.use(express.static(path.join(__dirname, "public")));
-
-// Add error handling for database connection
-pool.on("connection", (connection) => {
-  console.log("DB Connection established");
-
-  connection.on("error", (err) => {
-    console.error("DB Connection error", err);
-  });
-});
-
-// Add graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received");
-  pool.end((err) => {
-    if (err) console.error("Error closing pool", err);
-    process.exit(0);
-  });
-});
-
-// Add this after your routes
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).render("error", {
-    error: "Something broke!",
-    details: process.env.NODE_ENV === "development" ? err.message : null,
-  });
-});
-
-// Add a catch-all route for 404s
-app.use((req, res) => {
-  res.status(404).render("error", { error: "Page not found" });
-});
-
-// Add this before your routes
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+exports.pool = pool;
