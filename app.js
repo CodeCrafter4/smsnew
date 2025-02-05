@@ -119,7 +119,40 @@ const setup = () => {
 
   // Add these middleware before routes
   app.use(compression()); // Compress responses
-  app.use(helmet()); // Security headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            "https://cdn.jsdelivr.net",
+            "https://code.jquery.com",
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://cdn.jsdelivr.net",
+            "https://fonts.googleapis.com",
+          ],
+          imgSrc: ["'self'", "data:", "https:"],
+          fontSrc: [
+            "'self'",
+            "https://fonts.gstatic.com",
+            "https://cdn.jsdelivr.net",
+          ],
+          connectSrc: ["'self'"],
+          frameSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          upgradeInsecureRequests: [],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: false,
+    })
+  );
 
   // Routes configuration (assuming you have a student route in ./server/routes/student)
   const routes = require("./server/routes/student");
