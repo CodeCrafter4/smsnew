@@ -38,7 +38,7 @@
                 name="roll_number"
                 placeholder="Enter roll number"
                 required
-                pattern="[A-Za-z0-9]+"
+                readonly
               />
               <label for="roll_number">Roll Number</label>
               <div class="invalid-feedback">
@@ -80,9 +80,7 @@
                 name="parent_contact"
                 placeholder="Enter parent contact"
                 required
-                pattern="[0-9]+"
-                minlength="10"
-                maxlength="10"
+                maxlength="12"
               />
               <label for="parent_contact">Parent Contact</label>
               <div class="invalid-feedback">
@@ -232,11 +230,27 @@
       margin-bottom: 5px;
     }
   }
+
+  .form-control[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
 </style>
 
 <script>
-  // Form validation
+  // Function to generate roll number
+  function generateRollNumber() {
+    const random = Math.floor(Math.random() * 9000) + 1000; // 4-digit number between 1000-9999
+    return `R${random}`; // Format: R1234
+  }
+
+  // Set roll number when page loads
   document.addEventListener("DOMContentLoaded", function () {
+    const rollNumberInput = document.getElementById("roll_number");
+    rollNumberInput.value = generateRollNumber();
+
+    // Form validation
     const forms = document.querySelectorAll(".needs-validation");
 
     Array.from(forms).forEach((form) => {
